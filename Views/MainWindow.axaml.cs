@@ -15,21 +15,12 @@ public partial class MainWindow : Window
         Width = 800;
         Height = 600;
 
-        var contentHost = new Grid();
+        DataContext = new ViewModels.MainWindowViewModel();
 
-        var welcome = new WelcomeView();
-        contentHost.Children.Add(welcome);
+        var contentControl = new ContentControl();
+        contentControl.Bind(ContentControl.ContentProperty, new Binding("CurrentViewModel"));
+        contentControl.ContentTemplate = new TanukiPanel.ViewLocator();
 
-        welcome.Finished += async () =>
-        {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                contentHost.Children.Clear();
-                var apiView = new ApiKeyView();
-                contentHost.Children.Add(apiView);
-            });
-        };
-
-        Content = contentHost;
+        Content = contentControl;
     }
 }

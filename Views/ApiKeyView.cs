@@ -32,8 +32,9 @@ public class ApiKeyView : UserControl
         
 
         var label = new TextBlock 
-        { Text = "API Key:", 
-        FontSize = 12 
+        {
+            Text = "API Key:", 
+            FontSize = 12 
         };
 
         stack.Children.Add(label);

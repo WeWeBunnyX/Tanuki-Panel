@@ -10,29 +10,28 @@ namespace TanukiPanel.Views;
 /// A small welcome view that fades in a message, waits, then fades out and signals completion.
 /// This uses simple manual opacity animation so no extra packages are required.
 /// </summary>
-public class WelcomeView : UserControl
-{
-    private readonly TextBlock _text;
-    public event Action? Finished;
-
-    public WelcomeView()
+    public class WelcomeView : UserControl
     {
-        _text = new TextBlock
-        {
-            Text = "Welcome to Tanuki Panel",
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 28,
-            Opacity = 0
-        };
+        private readonly TextBlock _text;
 
-        Content = new Grid
+        public WelcomeView()
         {
-            Children = { _text }
-        };
+            _text = new TextBlock
+            {
+                Text = "Welcome to Tanuki Panel",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 28,
+                Opacity = 0
+            };
 
-        _ = RunSequenceAsync();
-    }
+            Content = new Grid
+            {
+                Children = { _text }
+            };
+
+            _ = RunSequenceAsync();
+        }
 
     private async Task RunSequenceAsync()
     {
@@ -46,7 +45,10 @@ public class WelcomeView : UserControl
         {
         }
 
-        Finished?.Invoke();
+        if (DataContext is ViewModels.WelcomeViewModel vm)
+        {
+            vm.OnAnimationFinished();
+        }
     }
 
     private async Task FadeToAsync(double target, int durationMs)
