@@ -18,8 +18,8 @@ public partial class MainWindow : Window
         DataContext = new ViewModels.MainWindowViewModel();
 
         var contentControl = new ContentControl();
-        contentControl.Bind(ContentControl.ContentProperty, new Binding("CurrentViewModel"));
-        contentControl.ContentTemplate = new TanukiPanel.ViewLocator();
+        contentControl.Bind(ContentProperty, new Binding("CurrentViewModel"));
+        contentControl.ContentTemplate = new ViewLocator();
 
         Content = contentControl;
     }
