@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Threading;
+using Avalonia.Animation;
 
 namespace TanukiPanel.Views;
 
@@ -30,6 +31,18 @@ namespace TanukiPanel.Views;
                 Children = { _text }
             };
 
+
+            _text.Transitions = new Transitions
+            {
+                new DoubleTransition
+                { 
+                     Property = TextBlock.OpacityProperty,
+                    Duration = TimeSpan.FromMilliseconds(700)
+                
+                }
+            };
+
+
             _ = RunSequenceAsync();
         }
 
@@ -37,9 +50,9 @@ namespace TanukiPanel.Views;
     {
         try
         {
-            await FadeToAsync(1.0, 700); // fade in 700ms
-            await Task.Delay(1200);      // visible for 1.2s
-            await FadeToAsync(0.0, 900); // fade out 900ms
+            await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity = 1.0);
+            await Task.Delay(1400);      
+            await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity = 0.0);
         }
         catch
         {
@@ -50,19 +63,5 @@ namespace TanukiPanel.Views;
             vm.OnAnimationFinished();
         }
     }
-
-    private async Task FadeToAsync(double target, int durationMs)
-    {
-        const int stepMs = 16; 
-        var steps = Math.Max(1, durationMs / stepMs);
-        var start = await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity);
-        for (int i = 1; i <= steps; i++)
-        {
-            var t = (double)i / steps;
-            var value = start + (target - start) * t;
-            await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity = value);
-            await Task.Delay(stepMs);
-        }
-        await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity = target);
-    }
+    
 }
