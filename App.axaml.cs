@@ -3,17 +3,23 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
-using Avalonia.Markup.Xaml;
-using Pangolini.ViewModels;
-using Pangolini.Views;
+using TanukiPanel.ViewModels;
+using TanukiPanel.Views;
+using Avalonia.Themes.Fluent;
 
-namespace Pangolini;
+namespace TanukiPanel;
 
 public partial class App : Application
 {
     public override void Initialize()
     {
-        AvaloniaXamlLoader.Load(this);
+        // Configure application in C# (no App.axaml)
+
+        // Register the ViewLocator as a DataTemplate so view models resolve to views
+        DataTemplates.Add(new ViewLocator());
+
+        // Add the Fluent theme
+        Styles.Add(new FluentTheme());
     }
 
     public override void OnFrameworkInitializationCompleted()

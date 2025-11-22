@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Pangolini.ViewModels;
+namespace TanukiPanel.ViewModels;
 
 public abstract class ViewModelBase : ObservableObject
 {

@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace Pangolini;
+namespace TanukiPanel;
 
 sealed class Program
 {

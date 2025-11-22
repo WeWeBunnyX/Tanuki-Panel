@@ -1,6 +1,6 @@
-﻿namespace Pangolini.ViewModels;
+﻿namespace TanukiPanel.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    public string Greeting { get; } = "Welcome to Avalonia!";
+    
 }

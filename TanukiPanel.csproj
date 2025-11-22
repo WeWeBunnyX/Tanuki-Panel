@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>TanukiPanel</AssemblyName>
+    <RootNamespace>TanukiPanel</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
