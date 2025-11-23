@@ -16,8 +16,11 @@ public class ApiKeyViewModel : ViewModelBase
 
     public IRelayCommand SaveCommand { get; }
 
-    public ApiKeyViewModel()
+    private readonly Action<ViewModelBase>? _navigate;
+
+    public ApiKeyViewModel(Action<ViewModelBase>? navigate = null)
     {
+        _navigate = navigate;
         SaveCommand = new RelayCommand(OnSave);
     }
 
@@ -58,6 +61,12 @@ public class ApiKeyViewModel : ViewModelBase
 
             File.WriteAllText(path, json);
             Console.WriteLine($"Saved API key to {path}");
+
+            try
+            {
+                _navigate?.Invoke(new SideBarContentViewModel(apiKey));
+            }
+            catch { }
         }
         catch (Exception ex)
         {

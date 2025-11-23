@@ -13,6 +13,6 @@ public class WelcomeViewModel : ViewModelBase
 
     public void OnAnimationFinished()
     {
-        _navigate(new ApiKeyViewModel());
+        _navigate(new ApiKeyViewModel(_navigate));
     }
 }
