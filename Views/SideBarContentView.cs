@@ -144,11 +144,16 @@ public class SideBarContentView : UserControl
             Foreground = Brushes.DarkGray
         };
 
-        contentBox.Child = contentText;
+    contentBox.Child = contentText;
 
-        var rightStack = new StackPanel { Orientation = Orientation.Vertical };
-        rightStack.Children.Add(header);
-        rightStack.Children.Add(contentBox);
+    var rightStack = new StackPanel { Orientation = Orientation.Vertical };
+    rightStack.Children.Add(header);
+
+    // ContentControl bound to CurrentViewModel (MVVM). ViewLocator will resolve the view for the active VM.
+    var contentControl = new ContentControl();
+    contentControl.Bind(ContentControl.ContentProperty, new Binding("CurrentViewModel"));
+    contentControl.ContentTemplate = new TanukiPanel.ViewLocator();
+    rightStack.Children.Add(contentControl);
 
 
 
@@ -161,11 +166,11 @@ public class SideBarContentView : UserControl
     grid.Children.Add(sidebar);
     grid.Children.Add(rightStack);
 
-    opt1.Click += (_, _) => contentBox.Child = new Option1View();
-    opt2.Click += (_, _) => contentBox.Child = new Option2View();
-    opt3.Click += (_, _) => contentBox.Child = new Option3View();
-    opt4.Click += (_, _) => contentBox.Child = new Option4View();
-    opt5.Click += (_, _) => contentBox.Child = new Option5View();
+    opt1.Bind(Button.CommandProperty, new Binding("SelectCommand")); opt1.CommandParameter = "Option1";
+    opt2.Bind(Button.CommandProperty, new Binding("SelectCommand")); opt2.CommandParameter = "Option2";
+    opt3.Bind(Button.CommandProperty, new Binding("SelectCommand")); opt3.CommandParameter = "Option3";
+    opt4.Bind(Button.CommandProperty, new Binding("SelectCommand")); opt4.CommandParameter = "Option4";
+    opt5.Bind(Button.CommandProperty, new Binding("SelectCommand")); opt5.CommandParameter = "Option5";
 
         Content = grid;
     }
