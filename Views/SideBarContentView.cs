@@ -49,24 +49,66 @@ public class SideBarContentView : UserControl
 
         var menuStack = new StackPanel { Orientation = Orientation.Vertical, Spacing = 8 };
 
-
-        for (int i = 1; i <= 5; i++)
+        var opt1 = new Button
         {
-            var btn = new Button
-            {
-                Content = $"Option {i}",
-                Background = Brushes.Transparent,
-                Foreground = Brushes.White,
-                BorderBrush = Brushes.Transparent,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Padding = new Thickness(10),
-                CornerRadius = new CornerRadius(6)
-            };
+            Content = "Option 1",
+            Background = Brushes.Transparent,
+            Foreground = Brushes.White,
+            BorderBrush = Brushes.Transparent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10),
+            CornerRadius = new CornerRadius(6)
+        };
 
-         
+        var opt2 = new Button
+        {
+            Content = "Option 2",
+            Background = Brushes.Transparent,
+            Foreground = Brushes.White,
+            BorderBrush = Brushes.Transparent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10),
+            CornerRadius = new CornerRadius(6)
+        };
 
-            menuStack.Children.Add(btn);
-        }
+        var opt3 = new Button
+        {
+            Content = "Option 3",
+            Background = Brushes.Transparent,
+            Foreground = Brushes.White,
+            BorderBrush = Brushes.Transparent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10),
+            CornerRadius = new CornerRadius(6)
+        };
+
+        var opt4 = new Button
+        {
+            Content = "Option 4",
+            Background = Brushes.Transparent,
+            Foreground = Brushes.White,
+            BorderBrush = Brushes.Transparent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10),
+            CornerRadius = new CornerRadius(6)
+        };
+
+        var opt5 = new Button
+        {
+            Content = "Option 5",
+            Background = Brushes.Transparent,
+            Foreground = Brushes.White,
+            BorderBrush = Brushes.Transparent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10),
+            CornerRadius = new CornerRadius(6)
+        };
+
+        menuStack.Children.Add(opt1);
+        menuStack.Children.Add(opt2);
+        menuStack.Children.Add(opt3);
+        menuStack.Children.Add(opt4);
+        menuStack.Children.Add(opt5);
 
         var sidebarStack = new StackPanel { Orientation = Orientation.Vertical };
         sidebarStack.Children.Add(logo);
@@ -97,11 +139,10 @@ public class SideBarContentView : UserControl
 
         var contentText = new TextBlock
         {
+            Text = "Select an option from the sidebar to begin.",
             FontSize = 14,
             Foreground = Brushes.DarkGray
         };
-
-        contentText.Bind(TextBlock.TextProperty, new Binding("ApiKey") { Mode = BindingMode.OneWay });
 
         contentBox.Child = contentText;
 
@@ -117,8 +158,14 @@ public class SideBarContentView : UserControl
         Grid.SetColumn(sidebar, 0);
         Grid.SetColumn(rightStack, 1);
 
-        grid.Children.Add(sidebar);
-        grid.Children.Add(rightStack);
+    grid.Children.Add(sidebar);
+    grid.Children.Add(rightStack);
+
+    opt1.Click += (_, _) => contentBox.Child = new Option1View();
+    opt2.Click += (_, _) => contentBox.Child = new Option2View();
+    opt3.Click += (_, _) => contentBox.Child = new Option3View();
+    opt4.Click += (_, _) => contentBox.Child = new Option4View();
+    opt5.Click += (_, _) => contentBox.Child = new Option5View();
 
         Content = grid;
     }

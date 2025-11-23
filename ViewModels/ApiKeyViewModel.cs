@@ -64,7 +64,7 @@ public class ApiKeyViewModel : ViewModelBase
 
             try
             {
-                _navigate?.Invoke(new SideBarContentViewModel(apiKey));
+                _navigate?.Invoke(new SideBarContentViewModel());
             }
             catch { }
         }
