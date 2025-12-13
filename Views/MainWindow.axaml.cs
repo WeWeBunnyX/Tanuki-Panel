@@ -15,7 +15,7 @@ public partial class MainWindow : Window
         Width = 800;
         Height = 600;
 
-        DataContext = new ViewModels.MainWindowViewModel();
+        // DataContext will be set by App.cs during dependency injection setup
 
         var contentControl = new ContentControl();
         contentControl.Bind(ContentProperty, new Binding("CurrentViewModel"));

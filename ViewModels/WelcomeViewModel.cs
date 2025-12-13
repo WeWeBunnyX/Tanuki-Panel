@@ -1,18 +1,22 @@
 using System;
+using TanukiPanel.Services;
 
 namespace TanukiPanel.ViewModels;
 
 public class WelcomeViewModel : ViewModelBase
 {
-    private readonly Action<ViewModelBase> _navigate;
+    private readonly INavigationService _navigationService;
+    private readonly IApiKeyPersistence _persistence;
 
-    public WelcomeViewModel(Action<ViewModelBase> navigate)
+    public WelcomeViewModel(INavigationService navigationService, IApiKeyPersistence persistence)
     {
-        _navigate = navigate;
+        _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        _persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
     }
 
     public void OnAnimationFinished()
     {
-        _navigate(new ApiKeyViewModel(_navigate));
+        var apiKeyViewModel = new ApiKeyViewModel(_persistence, _navigationService);
+        _navigationService.Navigate(apiKeyViewModel);
     }
 }

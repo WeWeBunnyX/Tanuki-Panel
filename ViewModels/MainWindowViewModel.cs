@@ -1,4 +1,7 @@
-﻿namespace TanukiPanel.ViewModels;
+﻿using System;
+using TanukiPanel.Services;
+
+namespace TanukiPanel.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
@@ -10,11 +13,18 @@ public partial class MainWindowViewModel : ViewModelBase
 		set => SetProperty(ref _currentViewModel, value);
 	}
 
-	public MainWindowViewModel()
+	private readonly IApiKeyPersistence _persistence;
+
+	public MainWindowViewModel(IApiKeyPersistence persistence)
 	{
-		// Start with the welcome VM and provide a navigation callback
-		CurrentViewModel = new WelcomeViewModel(NavigateTo);
+		_persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
+		// Don't initialize CurrentViewModel here; it will be set via NavigationService later
 	}
 
-	private void NavigateTo(ViewModelBase vm) => CurrentViewModel = vm;
+	// Called by NavigationService after DI is fully set up
+	public void InitializeWithNavigation(INavigationService navigationService)
+	{
+		var welcomeViewModel = new WelcomeViewModel(navigationService, _persistence);
+		CurrentViewModel = welcomeViewModel;
+	}
 }

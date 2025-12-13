@@ -27,7 +27,7 @@ public class SideBarContentViewModel : ViewModelBase
         SelectCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<string>(OnSelect);
     }
 
-    private void OnSelect(string option)
+    private void OnSelect(string? option)
     {
         switch (option)
         {

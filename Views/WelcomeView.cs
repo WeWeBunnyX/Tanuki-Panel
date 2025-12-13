@@ -1,37 +1,79 @@
 using System;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.Animation;
+using Avalonia.Media;
 
 namespace TanukiPanel.Views;
 
 /// <summary>
-/// A small welcome view that fades in a message, waits, then fades out and signals completion.
+/// A welcome view with modern styling that fades in a message, waits, then fades out and signals completion.
 /// </summary>
 public class WelcomeView : UserControl
 {
-    private readonly TextBlock _text;
-    private readonly TimeSpan _fadeDuration = TimeSpan.FromMilliseconds(700);
+    private readonly StackPanel _contentStack;
+    private readonly TextBlock _mainText;
+    private readonly TextBlock _subtitleText;
+    private readonly TimeSpan _fadeDuration = TimeSpan.FromMilliseconds(800);
 
     public WelcomeView()
     {
-        _text = new TextBlock
+        _mainText = new TextBlock
         {
-            Text = "Welcome to Tanuki Panel",
+            Text = "Tanuki Panel",
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 28,
-            Opacity = 0
+            FontSize = 48,
+            FontWeight = FontWeight.Bold,
+            Opacity = 0,
+            Foreground = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+                GradientStops = new GradientStops
+                {
+                    new GradientStop { Color = Color.Parse("#FF6A88"), Offset = 0 },
+                    new GradientStop { Color = Color.Parse("#FF99AC"), Offset = 1 }
+                }
+            }
         };
+
+        _subtitleText = new TextBlock
+        {
+            Text = "Your GitLab Ops Companion",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 18,
+            Opacity = 0,
+            Foreground = new SolidColorBrush(Color.Parse("#666666")),
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+
+        _contentStack = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        _contentStack.Children.Add(_mainText);
+        _contentStack.Children.Add(_subtitleText);
 
         Content = new Grid
         {
-            Children = { _text }
+            Background = new SolidColorBrush(Color.Parse("#FAFAFA")),
+            Children = { _contentStack }
         };
 
-        _text.Transitions = new Transitions
+        _mainText.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = TextBlock.OpacityProperty, Duration = _fadeDuration }
+        };
+
+        _subtitleText.Transitions = new Transitions
         {
             new DoubleTransition { Property = TextBlock.OpacityProperty, Duration = _fadeDuration }
         };
@@ -43,9 +85,15 @@ public class WelcomeView : UserControl
     {
         try
         {
-            await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity = 1.0);
-            await Task.Delay(1200); 
-            await Dispatcher.UIThread.InvokeAsync(() => _text.Opacity = 0.0);
+            await Dispatcher.UIThread.InvokeAsync(() => _mainText.Opacity = 1.0);
+            await Task.Delay(200);
+            await Dispatcher.UIThread.InvokeAsync(() => _subtitleText.Opacity = 1.0);
+            await Task.Delay(1500);
+            await Dispatcher.UIThread.InvokeAsync(() => 
+            {
+                _mainText.Opacity = 0.0;
+                _subtitleText.Opacity = 0.0;
+            });
             await Task.Delay(_fadeDuration);
         }
         catch
@@ -58,3 +106,4 @@ public class WelcomeView : UserControl
         }
     }
 }
+

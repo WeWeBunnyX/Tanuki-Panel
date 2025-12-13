@@ -3,14 +3,18 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
+using TanukiPanel.Services;
 using TanukiPanel.ViewModels;
 using TanukiPanel.Views;
 using Avalonia.Themes.Fluent;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TanukiPanel;
 
 public partial class App : Application
 {
+    private ServiceProvider? _serviceProvider;
+
     public override void Initialize()
     {
         // Configure application in C# (no App.axaml)
@@ -29,13 +33,42 @@ public partial class App : Application
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
+
+            // Set up dependency injection
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            _serviceProvider = services.BuildServiceProvider();
+
+            // Create MainWindowViewModel and NavigationService
+            var mainWindowViewModel = _serviceProvider.GetRequiredService<MainWindowViewModel>();
+            var navigationService = _serviceProvider.GetRequiredService<INavigationService>();
+            
+            // Initialize the ViewModel with navigation service (breaks circular dependency)
+            mainWindowViewModel.InitializeWithNavigation(navigationService);
+
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = mainWindowViewModel,
             };
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void ConfigureServices(ServiceCollection services)
+    {
+        // Register services
+        services.AddSingleton<IApiKeyPersistence, ApiKeyPersistence>();
+        
+        // Register MainWindowViewModel first
+        services.AddSingleton<MainWindowViewModel>();
+        
+        // Register INavigationService as a factory that gets MainWindowViewModel after it's created
+        services.AddSingleton<INavigationService>(sp => 
+        {
+            var mainVM = sp.GetRequiredService<MainWindowViewModel>();
+            return new NavigationService(mainVM);
+        });
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
