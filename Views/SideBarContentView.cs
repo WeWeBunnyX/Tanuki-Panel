@@ -61,7 +61,7 @@ public class SideBarContentView : UserControl
         // Create stylish option buttons with icons
         var buttonOptions = new[]
         {
-            ("📊", "Projects", "Option1"),
+            ("📊", "Projects", "Projects"),
             ("🚀", "Pipelines", "Option2"),
             ("📋", "Issues", "Option3"),
             ("🔧", "Settings", "Option4"),

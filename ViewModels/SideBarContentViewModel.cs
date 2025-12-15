@@ -30,9 +30,9 @@ public class SideBarContentViewModel : ViewModelBase
     public void Initialize(IGitLabApiService gitLabService)
     {
         _gitLabService = gitLabService;
-        var option1VM = new Option1ViewModel();
-        option1VM.Initialize(_gitLabService);
-        CurrentViewModel = option1VM;
+        var projectsVM = new ProjectsViewModel();
+        projectsVM.Initialize(_gitLabService);
+        CurrentViewModel = projectsVM;
         Title = "📊 Projects Dashboard";
     }
 
@@ -40,10 +40,10 @@ public class SideBarContentViewModel : ViewModelBase
     {
         switch (option)
         {
-            case "Option1": 
-                var opt1 = new Option1ViewModel();
-                opt1.Initialize(_gitLabService!);
-                CurrentViewModel = opt1;
+            case "Projects": 
+                var projectsVM = new ProjectsViewModel();
+                projectsVM.Initialize(_gitLabService!);
+                CurrentViewModel = projectsVM;
                 Title = "📊 Projects Dashboard";
                 break;
             case "Option2": 
@@ -63,9 +63,9 @@ public class SideBarContentViewModel : ViewModelBase
                 Title = "📈 Analytics";
                 break;
             default: 
-                var defaultOpt = new Option1ViewModel();
-                defaultOpt.Initialize(_gitLabService!);
-                CurrentViewModel = defaultOpt;
+                var defaultProjects = new ProjectsViewModel();
+                defaultProjects.Initialize(_gitLabService!);
+                CurrentViewModel = defaultProjects;
                 Title = "📊 Projects Dashboard";
                 break;
         }
