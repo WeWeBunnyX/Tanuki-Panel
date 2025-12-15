@@ -7,47 +7,81 @@ using Avalonia.Media;
 using System;
 using TanukiPanel.Models;
 using TanukiPanel.ViewModels;
+using TanukiPanel.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TanukiPanel.Views;
 
 public class ProjectsView : UserControl
 {
+    private IToastService? _toastService;
+
     public ProjectsView()
     {
+        // Get toast service from DI container
+        var app = Application.Current as App;
+        _toastService = app?.ServiceProvider?.GetService<IToastService>();
+
+        // GNOME color scheme
+        var gnomeBlue = Color.Parse("#3584E4");
+        var gnomeBackground = Color.Parse("#F6F5F4");
+        var gnomeSurface = Color.Parse("#FFFFFF");
+        var gnomeText = Color.Parse("#2E2E2E");
+        var gnomeBorder = Color.Parse("#CCCCCC");
+        var gnomeSubtext = Color.Parse("#77767B");
+
         // Header
         var headerBlock = new TextBlock
         {
-            Text = "📊 Your GitLab Projects",
-            FontSize = 20,
+            Text = "Projects",
+            FontSize = 24,
             FontWeight = FontWeight.Bold,
-            Foreground = new SolidColorBrush(Color.Parse("#333333")),
-            Margin = new Thickness(0, 0, 0, 16)
+            Foreground = new SolidColorBrush(gnomeText),
+            Margin = new Thickness(0, 0, 0, 24)
         };
 
-        // Search box
+        // Search box with GNOME styling
         var searchBox = new TextBox
         {
-            Watermark = "🔍 Search by name or description...",
-            Padding = new Thickness(12, 8),
-            FontSize = 12,
-            Margin = new Thickness(0, 0, 0, 8)
+            Watermark = "Search projects...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            Margin = new Thickness(0, 0, 0, 16),
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(gnomeText)
         };
         searchBox.Bind(TextBox.TextProperty, new Binding("SearchText") { Mode = BindingMode.TwoWay });
 
-        // Controls row (filters, sort, refresh)
+        // Controls row
         var controlsRow = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Margin = new Thickness(0, 0, 0, 12)
+            Spacing = 12,
+            Margin = new Thickness(0, 0, 0, 16)
         };
 
-        // Visibility filter
+        // Visibility filter with GNOME styling
+        var visibilityLabel = new TextBlock
+        {
+            Text = "Visibility:",
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 12,
+            Foreground = new SolidColorBrush(gnomeSubtext)
+        };
+
         var visibilityCombo = new ComboBox
         {
-            Width = 120,
-            Padding = new Thickness(8),
-            FontSize = 11
+            Width = 110,
+            Padding = new Thickness(10, 8),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(gnomeText)
         };
         visibilityCombo.Items.Add("All");
         visibilityCombo.Items.Add("public");
@@ -56,12 +90,26 @@ public class ProjectsView : UserControl
         visibilityCombo.SelectedIndex = 0;
         visibilityCombo.Bind(ComboBox.SelectedItemProperty, new Binding("FilterVisibility") { Mode = BindingMode.TwoWay });
 
-        // Sort dropdown
+        // Sort dropdown with GNOME styling
+        var sortLabel = new TextBlock
+        {
+            Text = "Sort by:",
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 12,
+            Foreground = new SolidColorBrush(gnomeSubtext),
+            Margin = new Thickness(12, 0, 0, 0)
+        };
+
         var sortCombo = new ComboBox
         {
             Width = 130,
-            Padding = new Thickness(8),
-            FontSize = 11
+            Padding = new Thickness(10, 8),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(gnomeText)
         };
         sortCombo.Items.Add("LastActivity");
         sortCombo.Items.Add("Name");
@@ -72,46 +120,41 @@ public class ProjectsView : UserControl
         // Hide archived toggle
         var hideArchivedCheck = new CheckBox
         {
-            Content = "📦 Hide Archived",
-            Padding = new Thickness(4),
-            FontSize = 11,
-            IsChecked = true
+            Content = "Hide Archived",
+            Padding = new Thickness(8),
+            FontSize = 12,
+            IsChecked = true,
+            Foreground = new SolidColorBrush(gnomeText),
+            Margin = new Thickness(12, 0, 0, 0)
         };
         hideArchivedCheck.Bind(CheckBox.IsCheckedProperty, new Binding("HideArchived") { Mode = BindingMode.TwoWay });
 
-        // Refresh button
+        // Refresh button with GNOME styling
         var refreshButton = new Button
         {
-            Content = "🔄 Refresh",
-            Padding = new Thickness(12, 6),
-            FontSize = 11,
+            Content = "Refresh",
+            Padding = new Thickness(16, 8),
+            FontSize = 12,
             CornerRadius = new CornerRadius(6),
-            Background = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                GradientStops = new GradientStops
-                {
-                    new GradientStop { Color = Color.Parse("#FF6A88"), Offset = 0 },
-                    new GradientStop { Color = Color.Parse("#FF99AC"), Offset = 1 }
-                }
-            },
-            Foreground = Brushes.White
+            Background = new SolidColorBrush(gnomeBlue),
+            Foreground = Brushes.White,
+            Margin = new Thickness(12, 0, 0, 0)
         };
         refreshButton.Bind(Button.CommandProperty, new Binding("RefreshCommand"));
 
-        controlsRow.Children.Add(new TextBlock { Text = "Filter:", VerticalAlignment = VerticalAlignment.Center, FontSize = 11 });
+        controlsRow.Children.Add(visibilityLabel);
         controlsRow.Children.Add(visibilityCombo);
-        controlsRow.Children.Add(new TextBlock { Text = "Sort:", VerticalAlignment = VerticalAlignment.Center, FontSize = 11, Margin = new Thickness(8, 0, 0, 0) });
+        controlsRow.Children.Add(sortLabel);
         controlsRow.Children.Add(sortCombo);
         controlsRow.Children.Add(hideArchivedCheck);
+        controlsRow.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch }); // Spacer
         controlsRow.Children.Add(refreshButton);
 
         // Loading indicator
         var loadingStack = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            Spacing = 8,
+            Spacing = 12,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(20)
@@ -119,16 +162,16 @@ public class ProjectsView : UserControl
 
         var loadingText = new TextBlock
         {
-            Text = "⏳ Loading...",
-            FontSize = 16,
-            Foreground = new SolidColorBrush(Color.Parse("#999999")),
+            Text = "Loading projects...",
+            FontSize = 14,
+            Foreground = new SolidColorBrush(gnomeText),
             TextAlignment = TextAlignment.Center
         };
 
         var loadingMessage = new TextBlock
         {
-            FontSize = 12,
-            Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")),
+            FontSize = 11,
+            Foreground = new SolidColorBrush(gnomeSubtext),
             TextAlignment = TextAlignment.Center
         };
         loadingMessage.Bind(TextBlock.TextProperty, new Binding("LoadingMessage"));
@@ -138,16 +181,16 @@ public class ProjectsView : UserControl
 
         var loadingBorder = new Border
         {
-            Background = new SolidColorBrush(Color.Parse("#F9F9F9")),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(20),
+            Background = new SolidColorBrush(gnomeBackground),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(32),
             Child = loadingStack
         };
 
         // Projects list
         var projectsList = new ItemsControl();
         projectsList.Bind(ItemsControl.ItemsSourceProperty, new Binding("Projects"));
-        projectsList.ItemTemplate = CreateProjectTemplate();
+        projectsList.ItemTemplate = CreateProjectTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder);
 
         var scrollViewer = new ScrollViewer
         {
@@ -178,40 +221,40 @@ public class ProjectsView : UserControl
 
         Content = new Border
         {
-            Background = Brushes.White,
-            Padding = new Thickness(16),
+            Background = new SolidColorBrush(gnomeBackground),
+            Padding = new Thickness(24),
             Child = mainStack
         };
     }
 
-    private IDataTemplate CreateProjectTemplate()
+    private IDataTemplate CreateProjectTemplate(Color textColor, Color subtextColor, Color surfaceColor, Color accentColor, Color borderColor)
     {
         return new FuncDataTemplate<Models.Project>((project, _) =>
         {
             var nameBlock = new TextBlock
             {
                 Text = project?.Name ?? "Unknown",
-                FontSize = 14,
+                FontSize = 15,
                 FontWeight = FontWeight.SemiBold,
-                Foreground = new SolidColorBrush(Color.Parse("#333333")),
+                Foreground = new SolidColorBrush(textColor),
                 TextWrapping = TextWrapping.Wrap
             };
 
             var descBlock = new TextBlock
             {
                 Text = project?.Description ?? "No description",
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Color.Parse("#999999")),
+                FontSize = 12,
+                Foreground = new SolidColorBrush(subtextColor),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 4, 0, 8)
+                Margin = new Thickness(0, 6, 0, 12)
             };
 
             // Activity timestamp
             var activityBlock = new TextBlock
             {
-                FontSize = 9,
-                Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
-                Margin = new Thickness(0, 0, 0, 8)
+                FontSize = 11,
+                Foreground = new SolidColorBrush(subtextColor),
+                Margin = new Thickness(0, 0, 0, 12)
             };
             if (project != null)
             {
@@ -219,11 +262,12 @@ public class ProjectsView : UserControl
                 activityBlock.Text = $"Last activity: {timeAgo}";
             }
 
+            // Stats row
             var statsStack = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 16,
-                Margin = new Thickness(0, 0, 0, 8)
+                Spacing = 20,
+                Margin = new Thickness(0, 0, 0, 12)
             };
 
             if (project != null)
@@ -231,29 +275,30 @@ public class ProjectsView : UserControl
                 var starText = new TextBlock
                 {
                     Text = $"⭐ {project.StarCount}",
-                    FontSize = 10,
-                    Foreground = new SolidColorBrush(Color.Parse("#FF9800"))
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(subtextColor)
                 };
 
                 var forkText = new TextBlock
                 {
                     Text = $"🔀 {project.ForksCount}",
-                    FontSize = 10,
-                    Foreground = new SolidColorBrush(Color.Parse("#2196F3"))
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(subtextColor)
                 };
 
                 var issueText = new TextBlock
                 {
                     Text = $"📋 {project.OpenIssuesCount}",
-                    FontSize = 10,
-                    Foreground = new SolidColorBrush(Color.Parse("#4CAF50"))
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(subtextColor)
                 };
 
                 var visibilityText = new TextBlock
                 {
-                    Text = $"🔒 {project.Visibility}",
-                    FontSize = 10,
-                    Foreground = new SolidColorBrush(Color.Parse("#666666"))
+                    Text = project.Visibility,
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(subtextColor),
+                    FontStyle = FontStyle.Italic
                 };
 
                 statsStack.Children.Add(starText);
@@ -266,35 +311,30 @@ public class ProjectsView : UserControl
             var buttonsRow = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                Margin = new Thickness(0, 8, 0, 0)
+                Spacing = 10,
+                Margin = new Thickness(0, 12, 0, 0)
             };
 
             var openButton = new Button
             {
-                Content = "🌐 Open in GitLab",
-                Padding = new Thickness(10, 6),
-                FontSize = 10,
-                Background = new LinearGradientBrush
-                {
-                    StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                    EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                    GradientStops = new GradientStops
-                    {
-                        new GradientStop { Color = Color.Parse("#FF6A88"), Offset = 0 },
-                        new GradientStop { Color = Color.Parse("#FF99AC"), Offset = 1 }
-                    }
-                },
+                Content = "Open",
+                Padding = new Thickness(14, 8),
+                FontSize = 11,
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(accentColor),
                 Foreground = Brushes.White
             };
 
             var copyButton = new Button
             {
-                Content = "📋 Copy Clone",
-                Padding = new Thickness(10, 6),
-                FontSize = 10,
-                Background = new SolidColorBrush(Color.Parse("#E8E8E8")),
-                Foreground = new SolidColorBrush(Color.Parse("#333333"))
+                Content = "Copy URL",
+                Padding = new Thickness(14, 8),
+                FontSize = 11,
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(surfaceColor),
+                BorderBrush = new SolidColorBrush(borderColor),
+                BorderThickness = new Thickness(1),
+                Foreground = new SolidColorBrush(textColor)
             };
 
             if (project != null)
@@ -305,11 +345,9 @@ public class ProjectsView : UserControl
                     {
                         if (string.IsNullOrWhiteSpace(project.WebUrl))
                         {
-                            System.Console.WriteLine("Error: Project URL is empty");
+                            _toastService?.ShowToast("Error: Project URL is empty", ToastType.Error);
                             return;
                         }
-
-                        System.Console.WriteLine($"Opening: {project.WebUrl}");
 
                         if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
                         {
@@ -342,10 +380,12 @@ public class ProjectsView : UserControl
                             var proc = System.Diagnostics.Process.Start(psi);
                             proc?.WaitForExit(2000);
                         }
+                        
+                        _toastService?.ShowToast($"Opening {project.Name}...", ToastType.Info);
                     }
                     catch (Exception ex)
                     {
-                        System.Console.WriteLine($"Failed to open: {ex.Message}");
+                        _toastService?.ShowToast($"Failed to open: {ex.Message}", ToastType.Error);
                     }
                 };
 
@@ -389,11 +429,11 @@ public class ProjectsView : UserControl
                             process?.WaitForExit();
                         }
 
-                        System.Console.WriteLine($"Copied: {url}");
+                        _toastService?.ShowToast($"Copied: {url}", ToastType.Success);
                     }
                     catch (Exception ex)
                     {
-                        System.Console.WriteLine($"Copy failed: {ex.Message}");
+                        _toastService?.ShowToast($"Failed to copy: {ex.Message}", ToastType.Error);
                     }
                 };
             }
@@ -415,12 +455,12 @@ public class ProjectsView : UserControl
 
             var projectBorder = new Border
             {
-                Background = new SolidColorBrush(Color.Parse("#FAFAFA")),
-                BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
+                Background = new SolidColorBrush(surfaceColor),
+                BorderBrush = new SolidColorBrush(borderColor),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(12),
-                Margin = new Thickness(0, 0, 0, 8),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(16),
+                Margin = new Thickness(0, 0, 0, 12),
                 Child = contentStack
             };
 

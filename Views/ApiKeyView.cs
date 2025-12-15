@@ -14,6 +14,14 @@ public class ApiKeyView : UserControl
 
     public ApiKeyView()
     {
+        // GNOME color scheme
+        var gnomeBlue = Color.Parse("#3584E4");
+        var gnomeBackground = Color.Parse("#F6F5F4");
+        var gnomeSurface = Color.Parse("#FFFFFF");
+        var gnomeText = Color.Parse("#2E2E2E");
+        var gnomeBorder = Color.Parse("#CCCCCC");
+        var gnomeSubtext = Color.Parse("#77767B");
+
         // DataContext is set by ViewLocator based on the ViewModel
 
         ApiKeyBox = new TextBox
@@ -23,9 +31,11 @@ public class ApiKeyView : UserControl
             Watermark = "Paste your GitLab API key here",
             FontSize = 13,
             Padding = new Thickness(12, 8),
-            BorderBrush = new SolidColorBrush(Color.Parse("#E0E0E0")),
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6)
+            CornerRadius = new CornerRadius(6),
+            Foreground = new SolidColorBrush(gnomeText)
         };
 
         var titleBlock = new TextBlock
@@ -33,16 +43,7 @@ public class ApiKeyView : UserControl
             Text = "Connect Your GitLab Account",
             FontSize = 32,
             FontWeight = FontWeight.Bold,
-            Foreground = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                GradientStops = new GradientStops
-                {
-                    new GradientStop { Color = Color.Parse("#FF6A88"), Offset = 0 },
-                    new GradientStop { Color = Color.Parse("#FF99AC"), Offset = 1 }
-                }
-            },
+            Foreground = new SolidColorBrush(gnomeBlue),
             Margin = new Thickness(0, 0, 0, 8)
         };
 
@@ -50,7 +51,7 @@ public class ApiKeyView : UserControl
         {
             Text = "Provide your GitLab API key to get started",
             FontSize = 14,
-            Foreground = new SolidColorBrush(Color.Parse("#999999")),
+            Foreground = new SolidColorBrush(gnomeSubtext),
             Margin = new Thickness(0, 0, 0, 28)
         };
 
@@ -59,7 +60,7 @@ public class ApiKeyView : UserControl
             Text = "API Key",
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
-            Foreground = new SolidColorBrush(Color.Parse("#333333")),
+            Foreground = new SolidColorBrush(gnomeText),
             Margin = new Thickness(0, 0, 0, 8)
         };
 
@@ -74,16 +75,7 @@ public class ApiKeyView : UserControl
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
             CornerRadius = new CornerRadius(6),
-            Background = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops = new GradientStops
-                {
-                    new GradientStop { Color = Color.Parse("#FF6A88"), Offset = 0 },
-                    new GradientStop { Color = Color.Parse("#FF99AC"), Offset = 1 }
-                }
-            },
+            Background = new SolidColorBrush(gnomeBlue),
             Foreground = Brushes.White,
             Margin = new Thickness(0, 16, 0, 0)
         };
@@ -94,7 +86,7 @@ public class ApiKeyView : UserControl
         {
             Text = "🔐 Your API key is stored securely on your device",
             FontSize = 11,
-            Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")),
+            Foreground = new SolidColorBrush(gnomeSubtext),
             Margin = new Thickness(0, 20, 0, 0)
         };
 

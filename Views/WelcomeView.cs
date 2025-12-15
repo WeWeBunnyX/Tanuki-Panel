@@ -10,7 +10,7 @@ using Avalonia.Media;
 namespace TanukiPanel.Views;
 
 /// <summary>
-/// A welcome view with modern styling that fades in a message, waits, then fades out and signals completion.
+/// A welcome view with GNOME styling that fades in a message, waits, then fades out and signals completion.
 /// </summary>
 public class WelcomeView : UserControl
 {
@@ -21,6 +21,11 @@ public class WelcomeView : UserControl
 
     public WelcomeView()
     {
+        // GNOME color scheme
+        var gnomeText = Color.Parse("#2E2E2E");
+        var gnomeBackground = Color.Parse("#F6F5F4");
+        var gnomeBlue = Color.Parse("#3584E4");
+
         _mainText = new TextBlock
         {
             Text = "Tanuki Panel",
@@ -29,16 +34,7 @@ public class WelcomeView : UserControl
             FontSize = 48,
             FontWeight = FontWeight.Bold,
             Opacity = 0,
-            Foreground = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                GradientStops = new GradientStops
-                {
-                    new GradientStop { Color = Color.Parse("#FF6A88"), Offset = 0 },
-                    new GradientStop { Color = Color.Parse("#FF99AC"), Offset = 1 }
-                }
-            }
+            Foreground = new SolidColorBrush(gnomeBlue)
         };
 
         _subtitleText = new TextBlock
@@ -48,7 +44,7 @@ public class WelcomeView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 18,
             Opacity = 0,
-            Foreground = new SolidColorBrush(Color.Parse("#666666")),
+            Foreground = new SolidColorBrush(Color.Parse("#77767B")),
             Margin = new Thickness(0, 12, 0, 0)
         };
 
@@ -64,7 +60,7 @@ public class WelcomeView : UserControl
 
         Content = new Grid
         {
-            Background = new SolidColorBrush(Color.Parse("#FAFAFA")),
+            Background = new SolidColorBrush(gnomeBackground),
             Children = { _contentStack }
         };
 

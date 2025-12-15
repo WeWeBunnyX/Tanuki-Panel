@@ -15,6 +15,8 @@ public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
 
+    public ServiceProvider? ServiceProvider => _serviceProvider;
+
     public override void Initialize()
     {
         // Configure application in C# (no App.axaml)
@@ -59,6 +61,7 @@ public partial class App : Application
     {
         // Register services
         services.AddSingleton<IApiKeyPersistence, ApiKeyPersistence>();
+        services.AddSingleton<IToastService, ToastService>();
         
         // Register MainWindowViewModel first
         services.AddSingleton<MainWindowViewModel>();
