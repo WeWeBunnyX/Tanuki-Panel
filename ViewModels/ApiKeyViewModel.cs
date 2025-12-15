@@ -36,7 +36,12 @@ public class ApiKeyViewModel : ViewModelBase
 
         if (_persistence.SaveApiKey(apiKey))
         {
-            _navigationService.Navigate(new SideBarContentViewModel());
+            // Create a fresh GitLab API service with the newly saved token
+            var freshGitLabService = new GitLabApiService("https://gitlab.com", apiKey);
+            
+            var sidebarVM = new SideBarContentViewModel();
+            sidebarVM.Initialize(freshGitLabService);
+            _navigationService.Navigate(sidebarVM);
         }
     }
 }

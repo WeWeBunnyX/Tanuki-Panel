@@ -20,3 +20,4 @@ public class WelcomeViewModel : ViewModelBase
         _navigationService.Navigate(apiKeyViewModel);
     }
 }
+

@@ -69,6 +69,24 @@ public partial class App : Application
             var mainVM = sp.GetRequiredService<MainWindowViewModel>();
             return new NavigationService(mainVM);
         });
+
+        // Register GitLab API Service (will be initialized with API key when needed)
+        services.AddSingleton<IGitLabApiService>(sp =>
+        {
+            // Get the API key from persistence
+            var persistence = sp.GetRequiredService<IApiKeyPersistence>();
+            var config = persistence.LoadApiKey();
+            
+            if (config != null && !string.IsNullOrEmpty(config.ApiKey))
+            {
+                // Extract GitLab instance URL (default to gitlab.com if not specified)
+                string gitlabUrl = "https://gitlab.com";
+                return new GitLabApiService(gitlabUrl, config.ApiKey);
+            }
+
+            // Return a dummy service if no API key is available
+            return new GitLabApiService("https://gitlab.com", "");
+        });
     }
 
     private void DisableAvaloniaDataAnnotationValidation()
