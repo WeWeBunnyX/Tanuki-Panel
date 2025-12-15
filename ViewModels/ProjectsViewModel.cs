@@ -20,6 +20,9 @@ public class ProjectsViewModel : ViewModelBase
     private bool _hideArchived = true;
     private string _sortBy = "LastActivity"; // LastActivity, Name, Stars
     private IGitLabApiService? _gitLabService;
+    private string _viewMode = "MyProjects"; // "MyProjects" or "SearchProjects"
+    private string _searchQuery = "";
+    private bool _isSearching = false;
 
     public ObservableCollection<Project> Projects
     {
@@ -58,7 +61,10 @@ public class ProjectsViewModel : ViewModelBase
         {
             if (SetProperty(ref _searchText, value))
             {
-                ApplyFilters();
+                if (_viewMode == "MyProjects")
+                {
+                    ApplyFilters();
+                }
             }
         }
     }
@@ -87,15 +93,50 @@ public class ProjectsViewModel : ViewModelBase
         }
     }
 
+    public string ViewMode
+    {
+        get => _viewMode;
+        set
+        {
+            if (SetProperty(ref _viewMode, value))
+            {
+                SearchText = "";
+                SearchQuery = "";
+                if (value == "MyProjects")
+                {
+                    ApplyFilters();
+                }
+                else
+                {
+                    Projects.Clear();
+                }
+            }
+        }
+    }
+
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set => SetProperty(ref _searchQuery, value);
+    }
+
+    public bool IsSearching
+    {
+        get => _isSearching;
+        set => SetProperty(ref _isSearching, value);
+    }
+
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Project> OpenProjectCommand { get; }
     public IRelayCommand<Project> CopyCloneUrlCommand { get; }
+    public IRelayCommand SearchProjectsCommand { get; }
 
     public ProjectsViewModel()
     {
         RefreshCommand = new AsyncRelayCommand(LoadProjectsAsync);
         OpenProjectCommand = new RelayCommand<Project>(OpenProject);
         CopyCloneUrlCommand = new RelayCommand<Project>(CopyCloneUrl);
+        SearchProjectsCommand = new AsyncRelayCommand(SearchProjectsAsync);
     }
 
     public void Initialize(IGitLabApiService gitLabService)
@@ -139,6 +180,48 @@ public class ProjectsViewModel : ViewModelBase
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private async Task SearchProjectsAsync()
+    {
+        if (_gitLabService == null)
+        {
+            LoadingMessage = "GitLab service not initialized";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            LoadingMessage = "Please enter a search term";
+            Projects.Clear();
+            return;
+        }
+
+        IsSearching = true;
+        LoadingMessage = "Searching projects...";
+
+        try
+        {
+            var results = await _gitLabService.SearchProjectsAsync(SearchQuery);
+            
+            Projects.Clear();
+            foreach (var project in results)
+            {
+                Projects.Add(project);
+            }
+
+            LoadingMessage = results.Count == 0 
+                ? $"No projects found matching '{SearchQuery}'" 
+                : $"Found {results.Count} projects matching '{SearchQuery}'";
+        }
+        catch (Exception ex)
+        {
+            LoadingMessage = $"Search error: {ex.Message}";
+        }
+        finally
+        {
+            IsSearching = false;
         }
     }
 

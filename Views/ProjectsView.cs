@@ -18,17 +18,18 @@ public class ProjectsView : UserControl
 
     public ProjectsView()
     {
-        // Get toast service from DI container
         var app = Application.Current as App;
         _toastService = app?.ServiceProvider?.GetService<IToastService>();
 
-        // GNOME color scheme
         var gnomeBlue = Color.Parse("#3584E4");
         var gnomeBackground = Color.Parse("#F6F5F4");
         var gnomeSurface = Color.Parse("#FFFFFF");
         var gnomeText = Color.Parse("#2E2E2E");
         var gnomeBorder = Color.Parse("#CCCCCC");
         var gnomeSubtext = Color.Parse("#77767B");
+
+        // Main container using DockPanel
+        var mainDockPanel = new DockPanel();
 
         // Header
         var headerBlock = new TextBlock
@@ -37,16 +38,62 @@ public class ProjectsView : UserControl
             FontSize = 24,
             FontWeight = FontWeight.Bold,
             Foreground = new SolidColorBrush(gnomeText),
-            Margin = new Thickness(0, 0, 0, 24)
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        DockPanel.SetDock(headerBlock, Dock.Top);
+        mainDockPanel.Children.Add(headerBlock);
+
+        // Tabs
+        var tabsPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(0, 0, 0, 16)
         };
 
-        // Search box with GNOME styling
+        var myProjectsButton = new Button
+        {
+            Content = "My Projects",
+            Padding = new Thickness(20, 10),
+            FontSize = 13,
+            Background = new SolidColorBrush(gnomeBlue),
+            Foreground = Brushes.White,
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(6, 6, 0, 0)
+        };
+
+        var searchProjectsButton = new Button
+        {
+            Content = "Search Projects",
+            Padding = new Thickness(20, 10),
+            FontSize = 13,
+            Background = new SolidColorBrush(gnomeSurface),
+            Foreground = new SolidColorBrush(gnomeText),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            CornerRadius = new CornerRadius(6, 6, 0, 0)
+        };
+
+        tabsPanel.Children.Add(myProjectsButton);
+        tabsPanel.Children.Add(searchProjectsButton);
+
+        DockPanel.SetDock(tabsPanel, Dock.Top);
+        mainDockPanel.Children.Add(tabsPanel);
+
+        // My Projects Tab - simple layout
+        var myProjectsPanelInner = new DockPanel { LastChildFill = true };
+        
+        var myProjControls = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 12
+        };
+
         var searchBox = new TextBox
         {
             Watermark = "Search projects...",
             Padding = new Thickness(12, 10),
             FontSize = 13,
-            Margin = new Thickness(0, 0, 0, 16),
             CornerRadius = new CornerRadius(8),
             Background = new SolidColorBrush(gnomeSurface),
             BorderBrush = new SolidColorBrush(gnomeBorder),
@@ -54,24 +101,10 @@ public class ProjectsView : UserControl
             Foreground = new SolidColorBrush(gnomeText)
         };
         searchBox.Bind(TextBox.TextProperty, new Binding("SearchText") { Mode = BindingMode.TwoWay });
+        myProjControls.Children.Add(searchBox);
 
-        // Controls row
-        var controlsRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 12,
-            Margin = new Thickness(0, 0, 0, 16)
-        };
-
-        // Visibility filter with GNOME styling
-        var visibilityLabel = new TextBlock
-        {
-            Text = "Visibility:",
-            VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 12,
-            Foreground = new SolidColorBrush(gnomeSubtext)
-        };
-
+        var controlsRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        
         var visibilityCombo = new ComboBox
         {
             Width = 110,
@@ -89,16 +122,8 @@ public class ProjectsView : UserControl
         visibilityCombo.Items.Add("internal");
         visibilityCombo.SelectedIndex = 0;
         visibilityCombo.Bind(ComboBox.SelectedItemProperty, new Binding("FilterVisibility") { Mode = BindingMode.TwoWay });
-
-        // Sort dropdown with GNOME styling
-        var sortLabel = new TextBlock
-        {
-            Text = "Sort by:",
-            VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 12,
-            Foreground = new SolidColorBrush(gnomeSubtext),
-            Margin = new Thickness(12, 0, 0, 0)
-        };
+        controlsRow.Children.Add(new TextBlock { Text = "Visibility:", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Foreground = new SolidColorBrush(gnomeSubtext) });
+        controlsRow.Children.Add(visibilityCombo);
 
         var sortCombo = new ComboBox
         {
@@ -116,114 +141,136 @@ public class ProjectsView : UserControl
         sortCombo.Items.Add("Stars");
         sortCombo.SelectedIndex = 0;
         sortCombo.Bind(ComboBox.SelectedItemProperty, new Binding("SortBy") { Mode = BindingMode.TwoWay });
-
-        // Hide archived toggle
-        var hideArchivedCheck = new CheckBox
-        {
-            Content = "Hide Archived",
-            Padding = new Thickness(8),
-            FontSize = 12,
-            IsChecked = true,
-            Foreground = new SolidColorBrush(gnomeText),
-            Margin = new Thickness(12, 0, 0, 0)
-        };
-        hideArchivedCheck.Bind(CheckBox.IsCheckedProperty, new Binding("HideArchived") { Mode = BindingMode.TwoWay });
-
-        // Refresh button with GNOME styling
-        var refreshButton = new Button
-        {
-            Content = "Refresh",
-            Padding = new Thickness(16, 8),
-            FontSize = 12,
-            CornerRadius = new CornerRadius(6),
-            Background = new SolidColorBrush(gnomeBlue),
-            Foreground = Brushes.White,
-            Margin = new Thickness(12, 0, 0, 0)
-        };
-        refreshButton.Bind(Button.CommandProperty, new Binding("RefreshCommand"));
-
-        controlsRow.Children.Add(visibilityLabel);
-        controlsRow.Children.Add(visibilityCombo);
-        controlsRow.Children.Add(sortLabel);
+        controlsRow.Children.Add(new TextBlock { Text = "Sort:", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Foreground = new SolidColorBrush(gnomeSubtext), Margin = new Thickness(12, 0, 0, 0) });
         controlsRow.Children.Add(sortCombo);
-        controlsRow.Children.Add(hideArchivedCheck);
-        controlsRow.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch }); // Spacer
-        controlsRow.Children.Add(refreshButton);
 
-        // Loading indicator
-        var loadingStack = new StackPanel
+        var hideArchived = new CheckBox { Content = "Hide Archived", FontSize = 12, IsChecked = true, Margin = new Thickness(12, 0, 0, 0), Foreground = new SolidColorBrush(gnomeText) };
+        hideArchived.Bind(CheckBox.IsCheckedProperty, new Binding("HideArchived") { Mode = BindingMode.TwoWay });
+        controlsRow.Children.Add(hideArchived);
+
+        controlsRow.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch });
+
+        var refreshBtn = new Button { Content = "Refresh", Padding = new Thickness(16, 8), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(gnomeBlue), Foreground = Brushes.White };
+        refreshBtn.Bind(Button.CommandProperty, new Binding("RefreshCommand"));
+        controlsRow.Children.Add(refreshBtn);
+
+        myProjControls.Children.Add(controlsRow);
+        DockPanel.SetDock(myProjControls, Dock.Top);
+        myProjectsPanelInner.Children.Add(myProjControls);
+
+        // ListBox for projects - HAS NATIVE SCROLLING
+        var myProjectsList = new ListBox
         {
-            Orientation = Orientation.Vertical,
-            Spacing = 12,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(20)
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0)
+        };
+        myProjectsList.Bind(ListBox.ItemsSourceProperty, new Binding("Projects"));
+        myProjectsList.ItemTemplate = CreateProjectTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder);
+        myProjectsPanelInner.Children.Add(myProjectsList);
+
+        var myProjectsPanel = new Border
+        {
+            Child = myProjectsPanelInner,
+            Padding = new Thickness(16)
         };
 
-        var loadingText = new TextBlock
+        var myProjectsBorder = new Border
         {
-            Text = "Loading projects...",
-            FontSize = 14,
-            Foreground = new SolidColorBrush(gnomeText),
-            TextAlignment = TextAlignment.Center
+            Child = myProjectsPanel,
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(gnomeBorder)
         };
 
-        var loadingMessage = new TextBlock
+        // Search Projects Tab
+        var searchPanelInner = new DockPanel { LastChildFill = true };
+        
+        var searchControls = new StackPanel { Orientation = Orientation.Vertical, Spacing = 12 };
+        searchControls.Children.Add(new TextBlock { Text = "Search other projects/repos:", FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(gnomeText) });
+
+        var searchInputRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var searchQueryBox = new TextBox
         {
-            FontSize = 11,
-            Foreground = new SolidColorBrush(gnomeSubtext),
-            TextAlignment = TextAlignment.Center
+            Watermark = "Enter project name...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(gnomeText)
         };
-        loadingMessage.Bind(TextBlock.TextProperty, new Binding("LoadingMessage"));
+        searchQueryBox.Bind(TextBox.TextProperty, new Binding("SearchQuery") { Mode = BindingMode.TwoWay });
+        searchInputRow.Children.Add(searchQueryBox);
 
-        loadingStack.Children.Add(loadingText);
-        loadingStack.Children.Add(loadingMessage);
+        var searchBtn = new Button { Content = "Search", Padding = new Thickness(20, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(gnomeBlue), Foreground = Brushes.White };
+        searchBtn.Bind(Button.CommandProperty, new Binding("SearchProjectsCommand"));
+        searchInputRow.Children.Add(searchBtn);
 
-        var loadingBorder = new Border
+        searchControls.Children.Add(searchInputRow);
+        DockPanel.SetDock(searchControls, Dock.Top);
+        searchPanelInner.Children.Add(searchControls);
+
+        // ListBox for search results - HAS NATIVE SCROLLING
+        var searchResultsList = new ListBox
         {
-            Background = new SolidColorBrush(gnomeBackground),
-            CornerRadius = new CornerRadius(12),
-            Padding = new Thickness(32),
-            Child = loadingStack
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0)
         };
+        searchResultsList.Bind(ListBox.ItemsSourceProperty, new Binding("Projects"));
+        searchResultsList.ItemTemplate = CreateProjectTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder);
+        searchPanelInner.Children.Add(searchResultsList);
 
-        // Projects list
-        var projectsList = new ItemsControl();
-        projectsList.Bind(ItemsControl.ItemsSourceProperty, new Binding("Projects"));
-        projectsList.ItemTemplate = CreateProjectTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder);
-
-        var scrollViewer = new ScrollViewer
+        var searchPanel = new Border
         {
-            Content = projectsList,
-            Padding = new Thickness(0, 0, 8, 0)
+            Child = searchPanelInner,
+            Padding = new Thickness(16)
         };
 
-        // Main stack
-        var mainStack = new StackPanel
+        var searchBorder = new Border
         {
-            Orientation = Orientation.Vertical,
-            Spacing = 0
+            Child = searchPanel,
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            IsVisible = false
         };
 
-        mainStack.Children.Add(headerBlock);
-        mainStack.Children.Add(searchBox);
-        mainStack.Children.Add(controlsRow);
+        // Tab switching
+        myProjectsButton.Click += (s, e) =>
+        {
+            myProjectsButton.Background = new SolidColorBrush(gnomeBlue);
+            myProjectsButton.Foreground = Brushes.White;
+            searchProjectsButton.Background = new SolidColorBrush(gnomeSurface);
+            searchProjectsButton.Foreground = new SolidColorBrush(gnomeText);
+            myProjectsBorder.IsVisible = true;
+            searchBorder.IsVisible = false;
+            if (DataContext is ProjectsViewModel vm) vm.ViewMode = "MyProjects";
+        };
 
-        // Container for loading vs content
-        var contentPresenter = new Grid();
-        contentPresenter.Children.Add(scrollViewer);
-        contentPresenter.Children.Add(loadingBorder);
+        searchProjectsButton.Click += (s, e) =>
+        {
+            myProjectsButton.Background = new SolidColorBrush(gnomeSurface);
+            myProjectsButton.Foreground = new SolidColorBrush(gnomeText);
+            searchProjectsButton.Background = new SolidColorBrush(gnomeBlue);
+            searchProjectsButton.Foreground = Brushes.White;
+            myProjectsBorder.IsVisible = false;
+            searchBorder.IsVisible = true;
+            if (DataContext is ProjectsViewModel vm) vm.ViewMode = "SearchProjects";
+        };
 
-        // Bind loading indicator visibility
-        loadingBorder.Bind(IsVisibleProperty, new Binding("IsLoading"));
-
-        mainStack.Children.Add(contentPresenter);
+        // Tab container
+        var tabContainer = new Grid();
+        tabContainer.Children.Add(myProjectsBorder);
+        tabContainer.Children.Add(searchBorder);
+        DockPanel.SetDock(tabContainer, Dock.Top);
+        mainDockPanel.Children.Add(tabContainer);
 
         Content = new Border
         {
+            Child = mainDockPanel,
             Background = new SolidColorBrush(gnomeBackground),
-            Padding = new Thickness(24),
-            Child = mainStack
+            Padding = new Thickness(24)
         };
     }
 
@@ -231,253 +278,160 @@ public class ProjectsView : UserControl
     {
         return new FuncDataTemplate<Models.Project>((project, _) =>
         {
+            var contentStack = new StackPanel { Spacing = 8 };
+
             var nameBlock = new TextBlock
             {
                 Text = project?.Name ?? "Unknown",
-                FontSize = 15,
+                FontSize = 14,
                 FontWeight = FontWeight.SemiBold,
-                Foreground = new SolidColorBrush(textColor),
-                TextWrapping = TextWrapping.Wrap
-            };
-
-            var descBlock = new TextBlock
-            {
-                Text = project?.Description ?? "No description",
-                FontSize = 12,
-                Foreground = new SolidColorBrush(subtextColor),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 6, 0, 12)
-            };
-
-            // Activity timestamp
-            var activityBlock = new TextBlock
-            {
-                FontSize = 11,
-                Foreground = new SolidColorBrush(subtextColor),
-                Margin = new Thickness(0, 0, 0, 12)
-            };
-            if (project != null)
-            {
-                var timeAgo = GetTimeAgo(project.LastActivityAt);
-                activityBlock.Text = $"Last activity: {timeAgo}";
-            }
-
-            // Stats row
-            var statsStack = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 20,
-                Margin = new Thickness(0, 0, 0, 12)
-            };
-
-            if (project != null)
-            {
-                var starText = new TextBlock
-                {
-                    Text = $"⭐ {project.StarCount}",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(subtextColor)
-                };
-
-                var forkText = new TextBlock
-                {
-                    Text = $"🔀 {project.ForksCount}",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(subtextColor)
-                };
-
-                var issueText = new TextBlock
-                {
-                    Text = $"📋 {project.OpenIssuesCount}",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(subtextColor)
-                };
-
-                var visibilityText = new TextBlock
-                {
-                    Text = project.Visibility,
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(subtextColor),
-                    FontStyle = FontStyle.Italic
-                };
-
-                statsStack.Children.Add(starText);
-                statsStack.Children.Add(forkText);
-                statsStack.Children.Add(issueText);
-                statsStack.Children.Add(visibilityText);
-            }
-
-            // Buttons row
-            var buttonsRow = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 10,
-                Margin = new Thickness(0, 12, 0, 0)
-            };
-
-            var openButton = new Button
-            {
-                Content = "Open",
-                Padding = new Thickness(14, 8),
-                FontSize = 11,
-                CornerRadius = new CornerRadius(6),
-                Background = new SolidColorBrush(accentColor),
-                Foreground = Brushes.White
-            };
-
-            var copyButton = new Button
-            {
-                Content = "Copy URL",
-                Padding = new Thickness(14, 8),
-                FontSize = 11,
-                CornerRadius = new CornerRadius(6),
-                Background = new SolidColorBrush(surfaceColor),
-                BorderBrush = new SolidColorBrush(borderColor),
-                BorderThickness = new Thickness(1),
                 Foreground = new SolidColorBrush(textColor)
             };
+            contentStack.Children.Add(nameBlock);
 
-            if (project != null)
+            if (!string.IsNullOrEmpty(project?.Description))
             {
-                openButton.Click += (s, e) =>
+                var descBlock = new TextBlock
                 {
-                    try
-                    {
-                        if (string.IsNullOrWhiteSpace(project.WebUrl))
-                        {
-                            _toastService?.ShowToast("Error: Project URL is empty", ToastType.Error);
-                            return;
-                        }
-
-                        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-                        {
-                            var psi = new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = project.WebUrl,
-                                UseShellExecute = true
-                            };
-                            System.Diagnostics.Process.Start(psi);
-                        }
-                        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
-                        {
-                            var psi = new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = "open",
-                                Arguments = project.WebUrl,
-                                UseShellExecute = true
-                            };
-                            System.Diagnostics.Process.Start(psi);
-                        }
-                        else
-                        {
-                            var psi = new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = "xdg-open",
-                                Arguments = $"\"{project.WebUrl}\"",
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            };
-                            var proc = System.Diagnostics.Process.Start(psi);
-                            proc?.WaitForExit(2000);
-                        }
-                        
-                        _toastService?.ShowToast($"Opening {project.Name}...", ToastType.Info);
-                    }
-                    catch (Exception ex)
-                    {
-                        _toastService?.ShowToast($"Failed to open: {ex.Message}", ToastType.Error);
-                    }
+                    Text = project.Description,
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(subtextColor),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 400
                 };
-
-                copyButton.Click += (s, e) =>
-                {
-                    try
-                    {
-                        var url = $"git clone {project.WebUrl}.git";
-
-                        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-                        {
-                            var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = "cmd",
-                                Arguments = $"/c echo {url} | clip",
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            });
-                            process?.WaitForExit();
-                        }
-                        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
-                        {
-                            var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = "bash",
-                                Arguments = $"-c \"echo '{url}' | pbcopy\"",
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            });
-                            process?.WaitForExit();
-                        }
-                        else
-                        {
-                            var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = "bash",
-                                Arguments = $"-c \"echo -n '{url}' | xclip -selection clipboard\"",
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            });
-                            process?.WaitForExit();
-                        }
-
-                        _toastService?.ShowToast($"Copied: {url}", ToastType.Success);
-                    }
-                    catch (Exception ex)
-                    {
-                        _toastService?.ShowToast($"Failed to copy: {ex.Message}", ToastType.Error);
-                    }
-                };
+                contentStack.Children.Add(descBlock);
             }
 
-            buttonsRow.Children.Add(openButton);
-            buttonsRow.Children.Add(copyButton);
+            var infoStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+            infoStack.Children.Add(new TextBlock { Text = $"⭐ {project?.StarCount}", FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
+            infoStack.Children.Add(new TextBlock { Text = $"🔀 {project?.ForksCount}", FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
+            infoStack.Children.Add(new TextBlock { Text = project?.Visibility, FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
+            contentStack.Children.Add(infoStack);
 
-            var contentStack = new StackPanel
+            var buttonsStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
+
+            var openBtn = new Button
             {
-                Orientation = Orientation.Vertical,
-                Spacing = 0
+                Content = "Open",
+                Padding = new Thickness(12, 6),
+                FontSize = 10,
+                Background = new SolidColorBrush(accentColor),
+                Foreground = Brushes.White,
+                CornerRadius = new CornerRadius(4)
             };
+            openBtn.Click += (s, e) => OpenProject(project);
+            buttonsStack.Children.Add(openBtn);
 
-            contentStack.Children.Add(nameBlock);
-            contentStack.Children.Add(descBlock);
-            contentStack.Children.Add(activityBlock);
-            contentStack.Children.Add(statsStack);
-            contentStack.Children.Add(buttonsRow);
-
-            var projectBorder = new Border
+            var copyBtn = new Button
             {
+                Content = "Copy",
+                Padding = new Thickness(12, 6),
+                FontSize = 10,
+                Background = new SolidColorBrush(surfaceColor),
+                Foreground = new SolidColorBrush(textColor),
+                BorderBrush = new SolidColorBrush(borderColor),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4)
+            };
+            copyBtn.Click += (s, e) => CopyUrl(project);
+            buttonsStack.Children.Add(copyBtn);
+
+            contentStack.Children.Add(buttonsStack);
+
+            return new Border
+            {
+                Child = contentStack,
                 Background = new SolidColorBrush(surfaceColor),
                 BorderBrush = new SolidColorBrush(borderColor),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(16),
-                Margin = new Thickness(0, 0, 0, 12),
-                Child = contentStack
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 0, 0, 8)
             };
-
-            return projectBorder;
         });
+    }
+
+    private void OpenProject(Project? project)
+    {
+        if (project == null) return;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo { UseShellExecute = true };
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                psi.FileName = project.WebUrl;
+            else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+            {
+                psi.FileName = "open";
+                psi.Arguments = project.WebUrl;
+            }
+            else
+            {
+                psi.FileName = "xdg-open";
+                psi.Arguments = project.WebUrl;
+            }
+            System.Diagnostics.Process.Start(psi);
+            _toastService?.ShowToast($"Opening {project.Name}...", ToastType.Info);
+        }
+        catch (Exception ex)
+        {
+            _toastService?.ShowToast($"Failed to open: {ex.Message}", ToastType.Error);
+        }
+    }
+
+    private void CopyUrl(Project? project)
+    {
+        if (project == null) return;
+        try
+        {
+            var url = $"git clone {project.WebUrl}.git";
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd",
+                    Arguments = $"/c echo {url} | clip",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                process?.WaitForExit();
+            }
+            else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+            {
+                var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "bash",
+                    Arguments = $"-c \"echo '{url}' | pbcopy\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                process?.WaitForExit();
+            }
+            else
+            {
+                var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "bash",
+                    Arguments = $"-c \"echo -n '{url}' | xclip -selection clipboard\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                process?.WaitForExit();
+            }
+            _toastService?.ShowToast($"Copied: {url}", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            _toastService?.ShowToast($"Failed to copy: {ex.Message}", ToastType.Error);
+        }
     }
 
     private static string GetTimeAgo(DateTime dateTime)
     {
         var timeSpan = DateTime.UtcNow - dateTime.ToUniversalTime();
-
         if (timeSpan.TotalSeconds < 60) return "just now";
         if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
         if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
         if (timeSpan.TotalDays < 30) return $"{(int)timeSpan.TotalDays}d ago";
-
         return dateTime.ToString("MMM d, yyyy");
     }
 }
-

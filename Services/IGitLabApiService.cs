@@ -19,6 +19,11 @@ public interface IGitLabApiService
     Task<List<Project>> GetProjectsAsync(int page = 1, int perPage = 20);
 
     /// <summary>
+    /// Searches for projects by name across all accessible projects
+    /// </summary>
+    Task<List<Project>> SearchProjectsAsync(string query, int page = 1, int perPage = 20);
+
+    /// <summary>
     /// Tests the API connection and authentication
     /// </summary>
     Task<bool> TestConnectionAsync();
@@ -70,6 +75,38 @@ public class GitLabApiService : IGitLabApiService
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to fetch projects: {ex.Message}");
+            return new List<Project>();
+        }
+    }
+
+    public async Task<List<Project>> SearchProjectsAsync(string query, int page = 1, int perPage = 20)
+    {
+        try
+        {
+            // Search across all accessible projects by name
+            var encodedQuery = Uri.EscapeDataString(query);
+            var url = $"{_gitlabUrl}/api/v4/projects?search={encodedQuery}&page={page}&per_page={perPage}&simple=false&order_by=last_activity_at&sort=desc";
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"GitLab API Error: {response.StatusCode}");
+                return new List<Project>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var projects = JsonSerializer.Deserialize<List<Project>>(json, options) ?? new List<Project>();
+            return projects;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to search projects: {ex.Message}");
             return new List<Project>();
         }
     }
