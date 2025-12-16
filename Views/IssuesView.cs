@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
@@ -31,10 +31,17 @@ public class IssuesView : UserControl
         var gnomeGreen = Color.Parse("#33D17A");
         var gnomeRed = Color.Parse("#E01B24");
 
-        // Main container using DockPanel
-        var mainDockPanel = new DockPanel();
+        // Main container using Grid (same as ProjectsView)
+        var mainGrid = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Tabs
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Content fills
 
-        // Header with project name and back button
+        // Header with back button
         var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         
         var backBtn = new Button
@@ -64,23 +71,13 @@ public class IssuesView : UserControl
         };
         headerStack.Children.Add(headerBlock);
 
-        var projectNameBlock = new TextBlock
-        {
-            Text = "",
-            FontSize = 14,
-            Foreground = new SolidColorBrush(gnomeSubtext),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        projectNameBlock.Bind(TextBlock.TextProperty, new Binding("CurrentProject.Name"));
-        headerStack.Children.Add(projectNameBlock);
-
         var headerBorder = new Border
         {
             Child = headerStack,
             Margin = new Thickness(0, 0, 0, 16)
         };
-        DockPanel.SetDock(headerBorder, Dock.Top);
-        mainDockPanel.Children.Add(headerBorder);
+        Grid.SetRow(headerBorder, 0);
+        mainGrid.Children.Add(headerBorder);
 
         // Tabs
         var tabsPanel = new StackPanel
@@ -129,218 +126,26 @@ public class IssuesView : UserControl
         tabsPanel.Children.Add(searchIssuesButton);
         tabsPanel.Children.Add(searchRepoButton);
 
-        DockPanel.SetDock(tabsPanel, Dock.Top);
-        mainDockPanel.Children.Add(tabsPanel);
+        Grid.SetRow(tabsPanel, 1);
+        mainGrid.Children.Add(tabsPanel);
 
-        // Project Issues Tab
-        var projectIssuesPanelInner = new DockPanel { LastChildFill = true };
+        // Create tab panels using helper methods
+        var projectIssuesPanel = CreateProjectIssuesPanel(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
+        var searchIssuesPanel = CreateSearchIssuesPanel(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
+        var searchRepoPanel = CreateSearchRepositoryPanel(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
+
+        var tabContainer = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        tabContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         
-        var projIssuesControls = new StackPanel
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 12
-        };
-
-        var searchBox = new TextBox
-        {
-            Watermark = "Search issues by title...",
-            Padding = new Thickness(12, 10),
-            FontSize = 13,
-            CornerRadius = new CornerRadius(8),
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            BorderThickness = new Thickness(1),
-            Foreground = new SolidColorBrush(gnomeText)
-        };
-        searchBox.Bind(TextBox.TextProperty, new Binding("SearchText") { Mode = BindingMode.TwoWay });
-        projIssuesControls.Children.Add(searchBox);
-
-        var controlsRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        
-        var stateCombo = new ComboBox
-        {
-            Width = 100,
-            Padding = new Thickness(10, 8),
-            FontSize = 12,
-            CornerRadius = new CornerRadius(6),
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            BorderThickness = new Thickness(1),
-            Foreground = new SolidColorBrush(gnomeText)
-        };
-        stateCombo.Items.Add("all");
-        stateCombo.Items.Add("opened");
-        stateCombo.Items.Add("closed");
-        stateCombo.SelectedIndex = 0;
-        stateCombo.Bind(ComboBox.SelectedItemProperty, new Binding("StateFilter") { Mode = BindingMode.TwoWay });
-        controlsRow.Children.Add(new TextBlock { Text = "State:", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Foreground = new SolidColorBrush(gnomeSubtext) });
-        controlsRow.Children.Add(stateCombo);
-
-        var sortCombo = new ComboBox
-        {
-            Width = 120,
-            Padding = new Thickness(10, 8),
-            FontSize = 12,
-            CornerRadius = new CornerRadius(6),
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            BorderThickness = new Thickness(1),
-            Foreground = new SolidColorBrush(gnomeText)
-        };
-        sortCombo.Items.Add("UpdatedAt");
-        sortCombo.Items.Add("CreatedAt");
-        sortCombo.Items.Add("Title");
-        sortCombo.SelectedIndex = 0;
-        sortCombo.Bind(ComboBox.SelectedItemProperty, new Binding("SortBy") { Mode = BindingMode.TwoWay });
-        controlsRow.Children.Add(new TextBlock { Text = "Sort:", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Foreground = new SolidColorBrush(gnomeSubtext), Margin = new Thickness(12, 0, 0, 0) });
-        controlsRow.Children.Add(sortCombo);
-
-        controlsRow.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch });
-
-        var refreshBtn = new Button { Content = "Refresh", Padding = new Thickness(16, 8), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(gnomeBlue), Foreground = Brushes.White };
-        refreshBtn.Bind(Button.CommandProperty, new Binding("RefreshCommand"));
-        controlsRow.Children.Add(refreshBtn);
-
-        projIssuesControls.Children.Add(controlsRow);
-        DockPanel.SetDock(projIssuesControls, Dock.Top);
-        projectIssuesPanelInner.Children.Add(projIssuesControls);
-
-        // ListBox for issues
-        var projectIssuesList = new ListBox
-        {
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
-        };
-        projectIssuesList.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
-        projectIssuesList.ItemTemplate = CreateIssueTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
-        projectIssuesPanelInner.Children.Add(projectIssuesList);
-
-        var projectIssuesPanel = new Border
-        {
-            Child = projectIssuesPanelInner,
-            Padding = new Thickness(16)
-        };
-
-        var projectIssuesBorder = new Border
-        {
-            Child = projectIssuesPanel,
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(gnomeBorder)
-        };
-
-        // Search Issues Tab
-        var searchPanelInner = new DockPanel { LastChildFill = true };
-        
-        var searchControls = new StackPanel { Orientation = Orientation.Vertical, Spacing = 12 };
-        searchControls.Children.Add(new TextBlock { Text = "Search issues across all projects:", FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(gnomeText) });
-
-        var searchInputRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        var searchQueryBox = new TextBox
-        {
-            Watermark = "Enter issue title or keywords...",
-            Padding = new Thickness(12, 10),
-            FontSize = 13,
-            CornerRadius = new CornerRadius(8),
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            BorderThickness = new Thickness(1),
-            Foreground = new SolidColorBrush(gnomeText)
-        };
-        searchQueryBox.Bind(TextBox.TextProperty, new Binding("SearchQuery") { Mode = BindingMode.TwoWay });
-        searchInputRow.Children.Add(searchQueryBox);
-
-        var searchBtn = new Button { Content = "Search", Padding = new Thickness(20, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(gnomeBlue), Foreground = Brushes.White };
-        searchBtn.Bind(Button.CommandProperty, new Binding("SearchIssuesCommand"));
-        searchInputRow.Children.Add(searchBtn);
-
-        searchControls.Children.Add(searchInputRow);
-        DockPanel.SetDock(searchControls, Dock.Top);
-        searchPanelInner.Children.Add(searchControls);
-
-        // ListBox for search results
-        var searchResultsList = new ListBox
-        {
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
-        };
-        searchResultsList.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
-        searchResultsList.ItemTemplate = CreateIssueTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
-        searchPanelInner.Children.Add(searchResultsList);
-
-        var searchPanel = new Border
-        {
-            Child = searchPanelInner,
-            Padding = new Thickness(16)
-        };
-
-        var searchBorder = new Border
-        {
-            Child = searchPanel,
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            IsVisible = false
-        };
-
-        // Search Repository Tab - for searching by repo path or URL
-        var searchRepoStack = new StackPanel
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 12
-        };
-
-        searchRepoStack.Children.Add(new TextBlock { Text = "Search issues in any repository:", FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(gnomeText) });
-
-        var repoSearchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        var repoPathBox = new TextBox
-        {
-            Watermark = "Enter repo path (e.g., group/project) or URL...",
-            Padding = new Thickness(12, 10),
-            FontSize = 13,
-            CornerRadius = new CornerRadius(8),
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            BorderThickness = new Thickness(1),
-            Foreground = new SolidColorBrush(gnomeText)
-        };
-        repoPathBox.Bind(TextBox.TextProperty, new Binding("RepositoryPath") { Mode = BindingMode.TwoWay });
-        repoSearchRow.Children.Add(repoPathBox);
-
-        var loadRepoBtn = new Button { Content = "Load", Padding = new Thickness(16, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(gnomeBlue), Foreground = Brushes.White };
-        loadRepoBtn.Click += (s, e) =>
-        {
-            if (DataContext is IssuesViewModel vm)
-            {
-                vm.LoadRepositoryIssuesCommand.Execute(null);
-            }
-        };
-        repoSearchRow.Children.Add(loadRepoBtn);
-        searchRepoStack.Children.Add(repoSearchRow);
-
-        // Issues list for repo search
-        var repoIssuesList = new ListBox
-        {
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0),
-            Margin = new Thickness(0, 12, 0, 0)
-        };
-        repoIssuesList.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
-        repoIssuesList.ItemTemplate = CreateIssueTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
-        searchRepoStack.Children.Add(repoIssuesList);
-
-        var searchRepoBorder = new Border
-        {
-            Child = new Border
-            {
-                Child = searchRepoStack,
-                Padding = new Thickness(16)
-            },
-            Background = new SolidColorBrush(gnomeSurface),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(gnomeBorder),
-            IsVisible = false
-        };
+        tabContainer.Children.Add(projectIssuesPanel);
+        tabContainer.Children.Add(searchIssuesPanel);
+        tabContainer.Children.Add(searchRepoPanel);
+        Grid.SetRow(tabContainer, 2);
+        mainGrid.Children.Add(tabContainer);
 
         // Tab switching
         projectIssuesButton.Click += (s, e) =>
@@ -351,9 +156,9 @@ public class IssuesView : UserControl
             searchIssuesButton.Foreground = new SolidColorBrush(gnomeText);
             searchRepoButton.Background = new SolidColorBrush(gnomeSurface);
             searchRepoButton.Foreground = new SolidColorBrush(gnomeText);
-            projectIssuesBorder.IsVisible = true;
-            searchBorder.IsVisible = false;
-            searchRepoBorder.IsVisible = false;
+            projectIssuesPanel.IsVisible = true;
+            searchIssuesPanel.IsVisible = false;
+            searchRepoPanel.IsVisible = false;
             if (DataContext is IssuesViewModel vm) vm.ViewMode = "ProjectIssues";
         };
 
@@ -365,9 +170,9 @@ public class IssuesView : UserControl
             searchIssuesButton.Foreground = Brushes.White;
             searchRepoButton.Background = new SolidColorBrush(gnomeSurface);
             searchRepoButton.Foreground = new SolidColorBrush(gnomeText);
-            projectIssuesBorder.IsVisible = false;
-            searchBorder.IsVisible = true;
-            searchRepoBorder.IsVisible = false;
+            projectIssuesPanel.IsVisible = false;
+            searchIssuesPanel.IsVisible = true;
+            searchRepoPanel.IsVisible = false;
             if (DataContext is IssuesViewModel vm) vm.ViewMode = "SearchIssues";
         };
 
@@ -379,25 +184,276 @@ public class IssuesView : UserControl
             searchIssuesButton.Foreground = new SolidColorBrush(gnomeText);
             searchRepoButton.Background = new SolidColorBrush(gnomeBlue);
             searchRepoButton.Foreground = Brushes.White;
-            projectIssuesBorder.IsVisible = false;
-            searchBorder.IsVisible = false;
-            searchRepoBorder.IsVisible = true;
+            projectIssuesPanel.IsVisible = false;
+            searchIssuesPanel.IsVisible = false;
+            searchRepoPanel.IsVisible = true;
             if (DataContext is IssuesViewModel vm) vm.ViewMode = "SearchRepository";
         };
 
-        // Tab container
-        var tabContainer = new Grid();
-        tabContainer.Children.Add(projectIssuesBorder);
-        tabContainer.Children.Add(searchBorder);
-        tabContainer.Children.Add(searchRepoBorder);
-        DockPanel.SetDock(tabContainer, Dock.Top);
-        mainDockPanel.Children.Add(tabContainer);
-
         Content = new Border
         {
-            Child = mainDockPanel,
+            Child = mainGrid,
             Background = new SolidColorBrush(gnomeBackground),
             Padding = new Thickness(24)
+        };
+    }
+
+    private Border CreateProjectIssuesPanel(Color textColor, Color subtextColor, Color surfaceColor, Color accentColor, Color borderColor, Color successColor, Color errorColor)
+    {
+        var grid = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 12,
+            Margin = new Thickness(16, 16, 16, 0)
+        };
+
+        var searchBox = new TextBox
+        {
+            Watermark = "Search issues by title...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(textColor)
+        };
+        searchBox.Bind(TextBox.TextProperty, new Binding("SearchText") { Mode = BindingMode.TwoWay });
+        controls.Children.Add(searchBox);
+
+        var filterRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var stateCombo = new ComboBox
+        {
+            Width = 100,
+            Padding = new Thickness(10, 8),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1)
+        };
+        stateCombo.Items.Add("all");
+        stateCombo.Items.Add("opened");
+        stateCombo.Items.Add("closed");
+        stateCombo.SelectedIndex = 0;
+        stateCombo.Bind(ComboBox.SelectedItemProperty, new Binding("StateFilter") { Mode = BindingMode.TwoWay });
+        filterRow.Children.Add(new TextBlock { Text = "State:", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Foreground = new SolidColorBrush(subtextColor) });
+        filterRow.Children.Add(stateCombo);
+
+        var sortCombo = new ComboBox
+        {
+            Width = 120,
+            Padding = new Thickness(10, 8),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1)
+        };
+        sortCombo.Items.Add("UpdatedAt");
+        sortCombo.Items.Add("CreatedAt");
+        sortCombo.Items.Add("Title");
+        sortCombo.SelectedIndex = 0;
+        sortCombo.Bind(ComboBox.SelectedItemProperty, new Binding("SortBy") { Mode = BindingMode.TwoWay });
+        filterRow.Children.Add(new TextBlock { Text = "Sort:", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Foreground = new SolidColorBrush(subtextColor), Margin = new Thickness(12, 0, 0, 0) });
+        filterRow.Children.Add(sortCombo);
+        filterRow.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch });
+
+        var refreshBtn = new Button { Content = "Refresh", Padding = new Thickness(16, 8), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(accentColor), Foreground = Brushes.White };
+        refreshBtn.Bind(Button.CommandProperty, new Binding("RefreshCommand"));
+        filterRow.Children.Add(refreshBtn);
+
+        controls.Children.Add(filterRow);
+        Grid.SetRow(controls, 0);
+        grid.Children.Add(controls);
+
+        var listBox = new ListBox
+        {
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0)
+        };
+        listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
+        listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
+        
+        var scrollViewer = new ScrollViewer
+        {
+            Content = listBox,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(16, 12, 16, 16)
+        };
+        Grid.SetRow(scrollViewer, 1);
+        grid.Children.Add(scrollViewer);
+
+        return new Border
+        {
+            Child = grid,
+            Background = new SolidColorBrush(surfaceColor),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(borderColor),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            IsVisible = true
+        };
+    }
+
+    private Border CreateSearchIssuesPanel(Color textColor, Color subtextColor, Color surfaceColor, Color accentColor, Color borderColor, Color successColor, Color errorColor)
+    {
+        var grid = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 12,
+            Margin = new Thickness(16, 16, 16, 0)
+        };
+        controls.Children.Add(new TextBlock { Text = "Search issues across all projects:", FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(textColor) });
+
+        var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var searchBox = new TextBox
+        {
+            Watermark = "Enter issue title or keywords...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(textColor)
+        };
+        searchBox.Bind(TextBox.TextProperty, new Binding("SearchQuery") { Mode = BindingMode.TwoWay });
+        searchRow.Children.Add(searchBox);
+
+        var searchBtn = new Button { Content = "Search", Padding = new Thickness(20, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(accentColor), Foreground = Brushes.White };
+        searchBtn.Bind(Button.CommandProperty, new Binding("SearchIssuesCommand"));
+        searchRow.Children.Add(searchBtn);
+
+        controls.Children.Add(searchRow);
+        Grid.SetRow(controls, 0);
+        grid.Children.Add(controls);
+
+        var listBox = new ListBox
+        {
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0)
+        };
+        listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
+        listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
+        
+        var scrollViewer = new ScrollViewer
+        {
+            Content = listBox,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(16, 12, 16, 16)
+        };
+        Grid.SetRow(scrollViewer, 1);
+        grid.Children.Add(scrollViewer);
+
+        return new Border
+        {
+            Child = grid,
+            Background = new SolidColorBrush(surfaceColor),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(borderColor),
+            IsVisible = false,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+    }
+
+    private Border CreateSearchRepositoryPanel(Color textColor, Color subtextColor, Color surfaceColor, Color accentColor, Color borderColor, Color successColor, Color errorColor)
+    {
+        var grid = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 12,
+            Margin = new Thickness(16, 16, 16, 0)
+        };
+        controls.Children.Add(new TextBlock { Text = "Search issues in any repository:", FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(textColor) });
+
+        var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var repoPathBox = new TextBox
+        {
+            Watermark = "Enter repo path (e.g., group/project)...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(textColor)
+        };
+        repoPathBox.Bind(TextBox.TextProperty, new Binding("RepositoryPath") { Mode = BindingMode.TwoWay });
+        searchRow.Children.Add(repoPathBox);
+
+        var loadBtn = new Button { Content = "Load", Padding = new Thickness(16, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(accentColor), Foreground = Brushes.White };
+        loadBtn.Click += (s, e) =>
+        {
+            if (DataContext is IssuesViewModel vm)
+                vm.LoadRepositoryIssuesCommand.Execute(null);
+        };
+        searchRow.Children.Add(loadBtn);
+
+        controls.Children.Add(searchRow);
+        Grid.SetRow(controls, 0);
+        grid.Children.Add(controls);
+
+        var listBox = new ListBox
+        {
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0)
+        };
+        listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
+        listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
+        
+        var scrollViewer = new ScrollViewer
+        {
+            Content = listBox,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(16, 12, 16, 16)
+        };
+        Grid.SetRow(scrollViewer, 1);
+        grid.Children.Add(scrollViewer);
+
+        return new Border
+        {
+            Child = grid,
+            Background = new SolidColorBrush(surfaceColor),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(borderColor),
+            IsVisible = false,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
     }
 
@@ -407,9 +463,7 @@ public class IssuesView : UserControl
         {
             var contentStack = new StackPanel { Spacing = 8 };
 
-            // Title and state
             var titleStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            
             var titleBlock = new TextBlock
             {
                 Text = issue?.Title ?? "Unknown",
@@ -431,11 +485,9 @@ public class IssuesView : UserControl
                     Margin = new Thickness(6, 2, 6, 2)
                 },
                 Background = new SolidColorBrush(issue?.State == "opened" ? successColor : errorColor),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(0)
+                CornerRadius = new CornerRadius(4)
             };
             titleStack.Children.Add(stateTag);
-
             contentStack.Children.Add(titleStack);
 
             if (!string.IsNullOrEmpty(issue?.Description))
@@ -451,44 +503,10 @@ public class IssuesView : UserControl
                 contentStack.Children.Add(descBlock);
             }
 
-            // Labels
-            if (issue?.Labels != null && issue.Labels.Length > 0)
-            {
-                var labelsStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-                foreach (var label in issue.Labels.Take(5))
-                {
-                    var labelBorder = new Border
-                    {
-                        Child = new TextBlock
-                        {
-                            Text = label,
-                            FontSize = 9,
-                            Foreground = new SolidColorBrush(textColor),
-                            Margin = new Thickness(6, 2, 6, 2)
-                        },
-                        Background = new SolidColorBrush(Color.Parse("#E8E8E8")),
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(0)
-                    };
-                    labelsStack.Children.Add(labelBorder);
-                }
-                contentStack.Children.Add(labelsStack);
-            }
-
             var infoStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
-            
             if (issue?.Author != null)
-            {
                 infoStack.Children.Add(new TextBlock { Text = $"👤 {issue.Author.Name}", FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
-            }
-            
-            infoStack.Children.Add(new TextBlock { Text = $"📅 {GetTimeAgo(issue?.CreatedAt ?? DateTime.Now)}", FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
-            
-            if (issue?.Upvotes > 0)
-            {
-                infoStack.Children.Add(new TextBlock { Text = $"👍 {issue.Upvotes}", FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
-            }
-
+            infoStack.Children.Add(new TextBlock { Text = $"📅 {issue?.CreatedAt:MMM d, yyyy}", FontSize = 10, Foreground = new SolidColorBrush(subtextColor) });
             contentStack.Children.Add(infoStack);
 
             var buttonsStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
@@ -504,6 +522,22 @@ public class IssuesView : UserControl
             };
             openBtn.Click += (s, e) => OpenIssue(issue);
             buttonsStack.Children.Add(openBtn);
+
+            var toggleBtn = new Button
+            {
+                Content = issue?.State == "opened" ? "Close" : "Reopen",
+                Padding = new Thickness(12, 6),
+                FontSize = 10,
+                Background = new SolidColorBrush(issue?.State == "opened" ? errorColor : successColor),
+                Foreground = Brushes.White,
+                CornerRadius = new CornerRadius(4)
+            };
+            toggleBtn.Click += (s, e) =>
+            {
+                if (DataContext is IssuesViewModel vm)
+                    vm.ToggleIssueStateCommand.Execute(issue);
+            };
+            buttonsStack.Children.Add(toggleBtn);
 
             contentStack.Children.Add(buttonsStack);
 
@@ -539,22 +573,10 @@ public class IssuesView : UserControl
                 psi.Arguments = issue.WebUrl;
             }
             System.Diagnostics.Process.Start(psi);
-            _toastService?.ShowToast($"Opening {issue.Title}...", ToastType.Info);
         }
         catch (Exception ex)
         {
-            _toastService?.ShowToast($"Failed to open: {ex.Message}", ToastType.Error);
+            Console.WriteLine($"Failed to open issue: {ex.Message}");
         }
     }
-
-    private static string GetTimeAgo(DateTime dateTime)
-    {
-        var timeSpan = DateTime.UtcNow - dateTime.ToUniversalTime();
-        if (timeSpan.TotalSeconds < 60) return "just now";
-        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
-        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
-        if (timeSpan.TotalDays < 30) return $"{(int)timeSpan.TotalDays}d ago";
-        return dateTime.ToString("MMM d, yyyy");
-    }
 }
-

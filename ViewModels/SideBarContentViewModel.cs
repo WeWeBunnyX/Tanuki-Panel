@@ -49,7 +49,7 @@ public class SideBarContentViewModel : ViewModelBase
                 Title = "📊 Projects Dashboard";
                 break;
             case "Option2": 
-                CurrentViewModel = new Option2ViewModel();
+                CurrentViewModel = new ContainerRegistryViewModel();
                 Title = "🚀 Pipelines";
                 break;
             case "Issues": 
