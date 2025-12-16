@@ -135,13 +135,42 @@ public class PackageRegistryViewModel : ViewModelBase
             string filePath = Path.Combine(downloadDir, fileName);
 
             // Simulate downloading by creating a file with progress updates
-            // In a real scenario, this would download from a URL
             await SimulatePackageDownloadAsync(filePath, package, _downloadCancellationToken.Token);
 
             if (!_downloadCancellationToken.Token.IsCancellationRequested)
             {
-                LoadingMessage = $"✓ Downloaded: {fileName}";
+                // Get file info
+                var fileInfo = new FileInfo(filePath);
+                string sizeStr = FormatBytes(fileInfo.Length);
+                
+                LoadingMessage = $"✓ Downloaded: {fileName} ({sizeStr}) → {downloadDir}";
                 Console.WriteLine($"[ViewModel] DownloadPackageAsync - Successfully downloaded to: {filePath}");
+                
+                // Try to open the file location
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo { UseShellExecute = true };
+                    if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                    {
+                        psi.FileName = "explorer.exe";
+                        psi.Arguments = $"/select, \"{filePath}\"";
+                    }
+                    else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+                    {
+                        psi.FileName = "open";
+                        psi.Arguments = $"-R \"{filePath}\"";
+                    }
+                    else
+                    {
+                        psi.FileName = "xdg-open";
+                        psi.Arguments = downloadDir;
+                    }
+                    System.Diagnostics.Process.Start(psi);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ViewModel] DownloadPackageAsync - Could not open file location: {ex.Message}");
+                }
             }
             else
             {
@@ -175,9 +204,10 @@ public class PackageRegistryViewModel : ViewModelBase
 
     private async Task SimulatePackageDownloadAsync(string filePath, Package package, CancellationToken cancellationToken)
     {
-        // Simulate downloading with progress
+        // Simulate downloading with progress by creating a mock package file with content
         const int totalChunks = 100;
         const int delayPerChunk = 50; // milliseconds
+        const int bytesPerChunk = 1024 * 10; // 10KB chunks
 
         using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
         {
@@ -185,9 +215,26 @@ public class PackageRegistryViewModel : ViewModelBase
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Write chunk of data
-                byte[] chunkData = new byte[1024 * 10]; // 10KB chunks
+                // Write actual data with package information
+                string chunkContent = $"Package: {package.Name}\n" +
+                                    $"Version: {package.Version}\n" +
+                                    $"Type: {package.PackageType}\n" +
+                                    $"Created: {package.CreatedAt:yyyy-MM-dd HH:mm:ss}\n" +
+                                    $"Chunk {i + 1}/{totalChunks}\n" +
+                                    $"Downloaded on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
+                                    new string('=', 50) + "\n";
+                
+                byte[] chunkData = System.Text.Encoding.UTF8.GetBytes(chunkContent);
                 await fileStream.WriteAsync(chunkData, 0, chunkData.Length, cancellationToken);
+                
+                // Pad to approximate chunk size
+                int padding = bytesPerChunk - chunkData.Length;
+                if (padding > 0)
+                {
+                    byte[] paddingData = new byte[padding];
+                    Random.Shared.NextBytes(paddingData);
+                    await fileStream.WriteAsync(paddingData, 0, paddingData.Length, cancellationToken);
+                }
 
                 // Update progress
                 DownloadProgress = ((double)i / totalChunks) * 100;
@@ -209,6 +256,21 @@ public class PackageRegistryViewModel : ViewModelBase
             _downloadCancellationToken.Cancel();
         }
     }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    // ...existing code...
 
     private async Task LoadRepositoryAsync()
     {
