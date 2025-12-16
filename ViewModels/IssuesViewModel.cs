@@ -19,6 +19,7 @@ public class IssuesViewModel : ViewModelBase
     private string _stateFilter = "all"; // all, opened, closed
     private string _sortBy = "UpdatedAt"; // UpdatedAt, CreatedAt, Title
     private IGitLabApiService? _gitLabService;
+    private INavigationService? _navigationService;
     private Project? _currentProject;
     private string _viewMode = "ProjectIssues"; // "ProjectIssues" or "SearchIssues"
     private string _searchQuery = "";
@@ -120,6 +121,11 @@ public class IssuesViewModel : ViewModelBase
         set => SetProperty(ref _currentProject, value);
     }
 
+    public INavigationService? NavigationService
+    {
+        get => _navigationService;
+    }
+
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Issue> OpenIssueCommand { get; }
     public IRelayCommand SearchIssuesCommand { get; }
@@ -136,6 +142,7 @@ public class IssuesViewModel : ViewModelBase
     public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
     {
         _gitLabService = gitLabService;
+        _navigationService = navigationService;
         // Store navigation service if needed for back button
     }
 

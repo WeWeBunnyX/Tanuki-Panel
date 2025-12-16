@@ -34,8 +34,26 @@ public class IssuesView : UserControl
         // Main container using DockPanel
         var mainDockPanel = new DockPanel();
 
-        // Header with project name
+        // Header with project name and back button
         var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
+        
+        var backBtn = new Button
+        {
+            Content = "← Back",
+            Padding = new Thickness(12, 8),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(gnomeBlue),
+            Foreground = Brushes.White
+        };
+        backBtn.Click += (s, e) =>
+        {
+            if (DataContext is ViewModelBase vm && vm is IssuesViewModel issuesVm && issuesVm.NavigationService != null)
+            {
+                issuesVm.NavigationService.GoBack();
+            }
+        };
+        headerStack.Children.Add(backBtn);
         
         var headerBlock = new TextBlock
         {

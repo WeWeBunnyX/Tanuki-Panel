@@ -12,4 +12,14 @@ public interface INavigationService
     /// </summary>
     /// <param name="viewModel">The view model to navigate to.</param>
     void Navigate(ViewModelBase viewModel);
+    
+    /// <summary>
+    /// Goes back to the previous view model.
+    /// </summary>
+    void GoBack();
+    
+    /// <summary>
+    /// Gets whether there is a previous view to go back to.
+    /// </summary>
+    bool CanGoBack { get; }
 }
