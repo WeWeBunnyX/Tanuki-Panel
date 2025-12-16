@@ -7,6 +7,7 @@ using Avalonia.Media;
 using System;
 using TanukiPanel.Models;
 using TanukiPanel.ViewModels;
+using TanukiPanel.Views.Converters;
 
 namespace TanukiPanel.Views;
 
@@ -89,6 +90,64 @@ public class PackageRegistryView : UserControl
         repoSection.Children.Add(repoInputRow);
         DockPanel.SetDock(repoSection, Dock.Top);
         mainDockPanel.Children.Add(repoSection);
+
+        // Download progress section (shown when downloading)
+        var downloadProgressSection = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#E8F4FD")),
+            BorderBrush = new SolidColorBrush(gnomeBlue),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 12),
+            IsVisible = false
+        };
+        downloadProgressSection.Bind(IsVisibleProperty, new Binding("IsDownloading"));
+
+        var downloadProgressStack = new StackPanel { Spacing = 8 };
+
+        var downloadStatusBlock = new TextBlock
+        {
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(gnomeText)
+        };
+        downloadStatusBlock.Bind(TextBlock.TextProperty, new Binding("DownloadFileName"));
+        downloadProgressStack.Children.Add(downloadStatusBlock);
+
+        var progressBar = new ProgressBar
+        {
+            Height = 20,
+            CornerRadius = new CornerRadius(4)
+        };
+        progressBar.Bind(ProgressBar.ValueProperty, new Binding("DownloadProgress"));
+        downloadProgressStack.Children.Add(progressBar);
+
+        var progressTextBlock = new TextBlock
+        {
+            FontSize = 10,
+            Foreground = new SolidColorBrush(gnomeSubtext)
+        };
+        progressTextBlock.Bind(TextBlock.TextProperty, new Binding("DownloadProgress") { Converter = new ProgressPercentageConverter() });
+        downloadProgressStack.Children.Add(progressTextBlock);
+
+        var cancelBtn = new Button
+        {
+            Content = "Cancel Download",
+            Padding = new Thickness(12, 6),
+            FontSize = 10,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(Color.Parse("#E01B24")),
+            Foreground = Brushes.White,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+        cancelBtn.Bind(Button.CommandProperty, new Binding("CancelDownloadCommand"));
+        downloadProgressStack.Children.Add(cancelBtn);
+
+        downloadProgressSection.Child = downloadProgressStack;
+        DockPanel.SetDock(downloadProgressSection, Dock.Top);
+        mainDockPanel.Children.Add(downloadProgressSection);
 
         // Status bar
         var statusBar = new TextBlock
@@ -207,14 +266,25 @@ public class PackageRegistryView : UserControl
                 Margin = new Thickness(0, 6, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
-            // Get the command from parent DataContext
+            downloadBtn.Bind(IsEnabledProperty, new Binding("IsDownloading") { Converter = new InvertBooleanConverter() });
+            
             downloadBtn.Click += (sender, e) =>
             {
-                if (sender is Button btn && btn.DataContext is PackageRegistryViewModel vm && package != null)
+                if (sender is Button btn && package != null)
                 {
-                    if (vm.DownloadPackageCommand.CanExecute(package))
+                    // Navigate up to find the PackageRegistryView (UserControl) which has the ViewModel as DataContext
+                    var parent = btn.Parent;
+                    while (parent != null && !(parent is PackageRegistryView))
                     {
-                        vm.DownloadPackageCommand.Execute(package);
+                        parent = (parent as Control)?.Parent;
+                    }
+                    
+                    if (parent is PackageRegistryView view && view.DataContext is PackageRegistryViewModel vm)
+                    {
+                        if (vm.DownloadPackageCommand.CanExecute(package))
+                        {
+                            vm.DownloadPackageCommand.Execute(package);
+                        }
                     }
                 }
             };
