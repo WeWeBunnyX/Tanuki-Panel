@@ -22,4 +22,9 @@ public interface INavigationService
     /// Gets whether there is a previous view to go back to.
     /// </summary>
     bool CanGoBack { get; }
+
+    /// <summary>
+    /// Gets the MainWindow ViewModel.
+    /// </summary>
+    MainWindowViewModel? GetMainWindowViewModel();
 }

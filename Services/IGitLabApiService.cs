@@ -56,6 +56,11 @@ public interface IGitLabApiService
     Task<string> GetCurrentUserAsync();
 
     /// <summary>
+    /// Gets the current authenticated user with full details including avatar
+    /// </summary>
+    Task<User?> GetCurrentUserDetailedAsync();
+
+    /// <summary>
     /// Fetches container registry repositories for a specific project
     /// </summary>
     Task<List<RegistryRepository>> GetRegistryRepositoriesAsync(int projectId, int page = 1, int perPage = 20);
@@ -279,6 +284,43 @@ public class GitLabApiService : IGitLabApiService
         catch
         {
             return "Unknown";
+        }
+    }
+
+    public async Task<User?> GetCurrentUserDetailedAsync()
+    {
+        try
+        {
+            var url = $"{_gitlabUrl}/api/v4/user";
+            Console.WriteLine($"[API] GetCurrentUserDetailedAsync - Fetching current user details");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] ERROR: Failed to fetch user details (Status: {response.StatusCode})");
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var user = JsonSerializer.Deserialize<User>(json, options);
+            if (user != null)
+            {
+                Console.WriteLine($"[API] Successfully fetched user: {user.Name} (@{user.Username})");
+                Console.WriteLine($"[API] Avatar URL: {user.AvatarUrl}");
+            }
+            return user;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to fetch user details: {ex.Message}");
+            return null;
         }
     }
 

@@ -25,7 +25,7 @@ public class ApiKeyViewModel : ViewModelBase
         SaveCommand = new RelayCommand(OnSave);
     }
 
-    private void OnSave()
+    private async void OnSave()
     {
         var apiKey = ApiKey?.Trim();
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -38,6 +38,17 @@ public class ApiKeyViewModel : ViewModelBase
         {
             // Create a fresh GitLab API service with the newly saved token
             var freshGitLabService = new GitLabApiService("https://gitlab.com", apiKey);
+            
+            // Fetch current user info
+            var user = await freshGitLabService.GetCurrentUserDetailedAsync();
+            
+            // Get MainWindow ViewModel and set user info
+            var mainWindowViewModel = _navigationService.GetMainWindowViewModel();
+            if (mainWindowViewModel != null && user != null)
+            {
+                mainWindowViewModel.SetCurrentUser(user);
+                Console.WriteLine($"[ViewModel] ApiKey - User loaded: {user.Name}");
+            }
             
             var sidebarVM = new SideBarContentViewModel();
             sidebarVM.Initialize(freshGitLabService, _navigationService);
