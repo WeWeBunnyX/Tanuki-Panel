@@ -119,19 +119,23 @@ public class PackageRegistryView : UserControl
         listGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         listGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        listGrid.Children.Add(new TextBlock
+        var headerBlock2 = new TextBlock
         {
             Text = "📦 Available Packages",
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
             Foreground = new SolidColorBrush(gnomeText),
             Margin = new Thickness(0, 0, 0, 12)
-        });
+        };
+        Grid.SetRow(headerBlock2, 0);
+        listGrid.Children.Add(headerBlock2);
 
         var packagesList = new ListBox
         {
             Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         packagesList.Bind(ListBox.ItemsSourceProperty, new Binding("Packages"));
         packagesList.ItemTemplate = CreatePackageTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBorder, gnomeGreen);
@@ -200,10 +204,20 @@ public class PackageRegistryView : UserControl
                 CornerRadius = new CornerRadius(4),
                 Background = new SolidColorBrush(successColor),
                 Foreground = Brushes.White,
-                Margin = new Thickness(0, 6, 0, 0)
+                Margin = new Thickness(0, 6, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left
             };
-            downloadBtn.Bind(Button.CommandProperty, new Binding("DownloadPackageCommand"));
-            downloadBtn.CommandParameter = package;
+            // Get the command from parent DataContext
+            downloadBtn.Click += (sender, e) =>
+            {
+                if (sender is Button btn && btn.DataContext is PackageRegistryViewModel vm && package != null)
+                {
+                    if (vm.DownloadPackageCommand.CanExecute(package))
+                    {
+                        vm.DownloadPackageCommand.Execute(package);
+                    }
+                }
+            };
             contentStack.Children.Add(downloadBtn);
 
             return new Border

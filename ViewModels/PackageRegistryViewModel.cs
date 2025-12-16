@@ -21,7 +21,11 @@ public class PackageRegistryViewModel : ViewModelBase
     public ObservableCollection<Package> Packages
     {
         get => _packages;
-        set => SetProperty(ref _packages, value);
+        set 
+        { 
+            Console.WriteLine($"[ViewModel] Packages setter called - new count: {value?.Count ?? 0}");
+            SetProperty(ref _packages, value);
+        }
     }
 
     public string RepositoryPath
