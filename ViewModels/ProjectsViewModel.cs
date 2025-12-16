@@ -23,6 +23,12 @@ public class ProjectsViewModel : ViewModelBase
     private string _viewMode = "MyProjects"; // "MyProjects" or "SearchProjects"
     private string _searchQuery = "";
     private bool _isSearching = false;
+    
+    // Pagination
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalSearchResults = 0;
+    private string _paginationInfo = "";
 
     public ObservableCollection<Project> Projects
     {
@@ -126,10 +132,36 @@ public class ProjectsViewModel : ViewModelBase
         set => SetProperty(ref _isSearching, value);
     }
 
+    public int CurrentPage
+    {
+        get => _currentPage;
+        set => SetProperty(ref _currentPage, value);
+    }
+
+    public int PageSize
+    {
+        get => _pageSize;
+        set => SetProperty(ref _pageSize, value);
+    }
+
+    public int TotalSearchResults
+    {
+        get => _totalSearchResults;
+        set => SetProperty(ref _totalSearchResults, value);
+    }
+
+    public string PaginationInfo
+    {
+        get => _paginationInfo;
+        set => SetProperty(ref _paginationInfo, value);
+    }
+
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Project> OpenProjectCommand { get; }
     public IRelayCommand<Project> CopyCloneUrlCommand { get; }
     public IRelayCommand SearchProjectsCommand { get; }
+    public IRelayCommand NextPageCommand { get; }
+    public IRelayCommand PreviousPageCommand { get; }
 
     public ProjectsViewModel()
     {
@@ -137,6 +169,8 @@ public class ProjectsViewModel : ViewModelBase
         OpenProjectCommand = new RelayCommand<Project>(OpenProject);
         CopyCloneUrlCommand = new RelayCommand<Project>(CopyCloneUrl);
         SearchProjectsCommand = new AsyncRelayCommand(SearchProjectsAsync);
+        NextPageCommand = new AsyncRelayCommand(NextPageAsync);
+        PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync);
     }
 
     public void Initialize(IGitLabApiService gitLabService)
@@ -195,15 +229,18 @@ public class ProjectsViewModel : ViewModelBase
         {
             LoadingMessage = "Please enter a search term";
             Projects.Clear();
+            TotalSearchResults = 0;
+            CurrentPage = 1;
             return;
         }
 
         IsSearching = true;
         LoadingMessage = "Searching projects...";
+        CurrentPage = 1; // Reset to first page on new search
 
         try
         {
-            var results = await _gitLabService.SearchProjectsAsync(SearchQuery);
+            var results = await _gitLabService.SearchProjectsAsync(SearchQuery, CurrentPage, PageSize);
             
             Projects.Clear();
             foreach (var project in results)
@@ -211,13 +248,99 @@ public class ProjectsViewModel : ViewModelBase
                 Projects.Add(project);
             }
 
+            // Estimate total based on results count and page size
+            // If we got a full page, there might be more
+            TotalSearchResults = results.Count == PageSize ? results.Count * 2 : results.Count;
+            
+            var totalPages = (int)Math.Ceiling((double)TotalSearchResults / PageSize);
+            PaginationInfo = $"Page {CurrentPage} - Showing {results.Count} results";
+
             LoadingMessage = results.Count == 0 
                 ? $"No projects found matching '{SearchQuery}'" 
-                : $"Found {results.Count} projects matching '{SearchQuery}'";
+                : $"Found {results.Count} projects matching '{SearchQuery}' (Page {CurrentPage})";
         }
         catch (Exception ex)
         {
             LoadingMessage = $"Search error: {ex.Message}";
+        }
+        finally
+        {
+            IsSearching = false;
+        }
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (IsSearching || string.IsNullOrWhiteSpace(SearchQuery))
+            return;
+
+        if (_gitLabService == null)
+            return;
+
+        IsSearching = true;
+        CurrentPage++;
+        LoadingMessage = "Loading next page...";
+
+        try
+        {
+            var results = await _gitLabService.SearchProjectsAsync(SearchQuery, CurrentPage, PageSize);
+            
+            if (results.Count == 0)
+            {
+                CurrentPage--; // Go back if no results
+                LoadingMessage = "No more pages available";
+                return;
+            }
+
+            Projects.Clear();
+            foreach (var project in results)
+            {
+                Projects.Add(project);
+            }
+
+            PaginationInfo = $"Page {CurrentPage} - Showing {results.Count} results";
+            LoadingMessage = $"Page {CurrentPage}: {results.Count} projects found";
+        }
+        catch (Exception ex)
+        {
+            CurrentPage--;
+            LoadingMessage = $"Error loading next page: {ex.Message}";
+        }
+        finally
+        {
+            IsSearching = false;
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (IsSearching || CurrentPage <= 1 || string.IsNullOrWhiteSpace(SearchQuery))
+            return;
+
+        if (_gitLabService == null)
+            return;
+
+        IsSearching = true;
+        CurrentPage--;
+        LoadingMessage = "Loading previous page...";
+
+        try
+        {
+            var results = await _gitLabService.SearchProjectsAsync(SearchQuery, CurrentPage, PageSize);
+            
+            Projects.Clear();
+            foreach (var project in results)
+            {
+                Projects.Add(project);
+            }
+
+            PaginationInfo = $"Page {CurrentPage} - Showing {results.Count} results";
+            LoadingMessage = $"Page {CurrentPage}: {results.Count} projects found";
+        }
+        catch (Exception ex)
+        {
+            CurrentPage++;
+            LoadingMessage = $"Error loading previous page: {ex.Message}";
         }
         finally
         {
