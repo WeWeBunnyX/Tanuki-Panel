@@ -204,48 +204,106 @@ public class PackageRegistryViewModel : ViewModelBase
 
     private async Task SimulatePackageDownloadAsync(string filePath, Package package, CancellationToken cancellationToken)
     {
-        // Simulate downloading with progress by creating a mock package file with content
-        const int totalChunks = 100;
-        const int delayPerChunk = 50; // milliseconds
-        const int bytesPerChunk = 1024 * 10; // 10KB chunks
-
-        using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+        try
         {
-            for (int i = 0; i < totalChunks; i++)
+            if (SelectedProject == null)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Write actual data with package information
-                string chunkContent = $"Package: {package.Name}\n" +
-                                    $"Version: {package.Version}\n" +
-                                    $"Type: {package.PackageType}\n" +
-                                    $"Created: {package.CreatedAt:yyyy-MM-dd HH:mm:ss}\n" +
-                                    $"Chunk {i + 1}/{totalChunks}\n" +
-                                    $"Downloaded on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
-                                    new string('=', 50) + "\n";
-                
-                byte[] chunkData = System.Text.Encoding.UTF8.GetBytes(chunkContent);
-                await fileStream.WriteAsync(chunkData, 0, chunkData.Length, cancellationToken);
-                
-                // Pad to approximate chunk size
-                int padding = bytesPerChunk - chunkData.Length;
-                if (padding > 0)
-                {
-                    byte[] paddingData = new byte[padding];
-                    Random.Shared.NextBytes(paddingData);
-                    await fileStream.WriteAsync(paddingData, 0, paddingData.Length, cancellationToken);
-                }
-
-                // Update progress
-                DownloadProgress = ((double)i / totalChunks) * 100;
-                LoadingMessage = $"Downloading {package.Name} v{package.Version}... {(int)DownloadProgress}%";
-
-                // Simulate network delay
-                await Task.Delay(delayPerChunk, cancellationToken);
+                throw new InvalidOperationException("No project selected");
             }
-        }
 
-        DownloadProgress = 100;
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Starting real download for package: {package.Name} (ID: {package.Id})");
+            
+            // Get package files list first to get the file ID
+            string filesListUrl = $"https://gitlab.com/api/v4/projects/{SelectedProject.Id}/packages/{package.Id}/package_files";
+            
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Fetching package files from: {filesListUrl}");
+            
+            var packageFilesResponse = await _httpClient.GetAsync(filesListUrl);
+            if (!packageFilesResponse.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Could not get package files list: {packageFilesResponse.StatusCode}");
+                throw new Exception($"Failed to get package files: {packageFilesResponse.StatusCode}");
+            }
+
+            var filesJson = await packageFilesResponse.Content.ReadAsStringAsync();
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Package files response: {filesJson.Substring(0, Math.Min(200, filesJson.Length))}");
+
+            // Parse JSON to get first file ID
+            using (var jsonDoc = System.Text.Json.JsonDocument.Parse(filesJson))
+            {
+                var fileArray = jsonDoc.RootElement;
+                if (fileArray.GetArrayLength() == 0)
+                {
+                    throw new Exception("No files found in package");
+                }
+                
+                var firstFile = fileArray[0];
+                int fileId = firstFile.GetProperty("id").GetInt32();
+                string fileName = firstFile.GetProperty("file_name").GetString() ?? "unknown";
+                long fileSize = firstFile.GetProperty("size").GetInt64();
+                
+                Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Found file: {fileName} (ID: {fileId}, Size: {FormatBytes(fileSize)})");
+
+                // Use the correct download endpoint for package files
+                string fileDownloadUrl = $"https://gitlab.com/api/v4/projects/{SelectedProject.Id}/packages/{package.Id}/package_files/{fileId}/download";
+                
+                Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Attempting download from: {fileDownloadUrl}");
+                
+                using (var downloadResponse = await _httpClient.GetAsync(fileDownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+                {
+                    if (!downloadResponse.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Download failed: {downloadResponse.StatusCode}");
+                        var errorBody = await downloadResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Error response: {errorBody}");
+                        throw new Exception($"Download failed: {downloadResponse.StatusCode}");
+                    }
+
+                    long? contentLength = downloadResponse.Content.Headers.ContentLength;
+                    Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - File size from response: {(contentLength.HasValue ? FormatBytes(contentLength.Value) : "Unknown")}");
+
+                    using (var contentStream = await downloadResponse.Content.ReadAsStreamAsync())
+                    using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                    {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        long totalBytesRead = 0;
+
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) != 0)
+                        {
+                            await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                            totalBytesRead += bytesRead;
+
+                            if (contentLength.HasValue)
+                            {
+                                DownloadProgress = (double)totalBytesRead / contentLength.Value * 100;
+                                LoadingMessage = $"Downloading {package.Name}... {(int)DownloadProgress}% ({FormatBytes(totalBytesRead)}/{FormatBytes(contentLength.Value)})";
+                            }
+                            else
+                            {
+                                LoadingMessage = $"Downloading {package.Name}... {FormatBytes(totalBytesRead)} downloaded";
+                            }
+
+                            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Downloaded {FormatBytes(totalBytesRead)}");
+                        }
+                    }
+                }
+            }
+
+            DownloadProgress = 100;
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Download completed successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Download cancelled by user");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - ERROR during download: {ex.Message}");
+            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Stack trace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     private void CancelDownload()

@@ -91,6 +91,7 @@ public class GitLabApiService : IGitLabApiService
         _apiToken = apiToken;
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", _apiToken);
+        Console.WriteLine($"[API] GitLabApiService initialized - URL: {_gitlabUrl}, Token length: {_apiToken?.Length ?? 0}");
     }
 
     public async Task<List<Project>> GetProjectsAsync(int page = 1, int perPage = 20)
@@ -278,11 +279,15 @@ public class GitLabApiService : IGitLabApiService
             
             Console.WriteLine($"[API] GetProjectByPathAsync - Searching for project: {projectPath}");
             Console.WriteLine($"[API] URL: {url}");
+            Console.WriteLine($"[API] Authorization header present: {_httpClient.DefaultRequestHeaders.Contains("PRIVATE-TOKEN")}");
+            Console.WriteLine($"[API] Token: {(_apiToken?.Substring(0, Math.Min(10, _apiToken.Length)) + "..." ?? "NONE")}");
             
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"[API] ERROR: Project not found (Status: {response.StatusCode})");
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[API] Response body: {errorContent}");
                 return null;
             }
 
