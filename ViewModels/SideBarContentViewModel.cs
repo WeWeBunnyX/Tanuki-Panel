@@ -52,8 +52,10 @@ public class SideBarContentViewModel : ViewModelBase
                 CurrentViewModel = new Option2ViewModel();
                 Title = "🚀 Pipelines";
                 break;
-            case "Option3": 
-                CurrentViewModel = new Option3ViewModel();
+            case "Issues": 
+                var issuesVM = new IssuesViewModel();
+                issuesVM.Initialize(_gitLabService!, _navigationService);
+                CurrentViewModel = issuesVM;
                 Title = "📋 Issues";
                 break;
             case "Option4": 

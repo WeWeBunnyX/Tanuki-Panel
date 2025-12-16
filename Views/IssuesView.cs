@@ -113,8 +113,21 @@ public class IssuesView : UserControl
             CornerRadius = new CornerRadius(6, 6, 0, 0)
         };
 
+        var searchRepoButton = new Button
+        {
+            Content = "Search Repository",
+            Padding = new Thickness(20, 10),
+            FontSize = 13,
+            Background = new SolidColorBrush(gnomeSurface),
+            Foreground = new SolidColorBrush(gnomeText),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            CornerRadius = new CornerRadius(6, 6, 0, 0)
+        };
+
         tabsPanel.Children.Add(projectIssuesButton);
         tabsPanel.Children.Add(searchIssuesButton);
+        tabsPanel.Children.Add(searchRepoButton);
 
         DockPanel.SetDock(tabsPanel, Dock.Top);
         mainDockPanel.Children.Add(tabsPanel);
@@ -270,6 +283,65 @@ public class IssuesView : UserControl
             IsVisible = false
         };
 
+        // Search Repository Tab - for searching by repo path or URL
+        var searchRepoStack = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 12
+        };
+
+        searchRepoStack.Children.Add(new TextBlock { Text = "Search issues in any repository:", FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(gnomeText) });
+
+        var repoSearchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var repoPathBox = new TextBox
+        {
+            Watermark = "Enter repo path (e.g., group/project) or URL...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(gnomeText)
+        };
+        repoPathBox.Bind(TextBox.TextProperty, new Binding("RepositoryPath") { Mode = BindingMode.TwoWay });
+        repoSearchRow.Children.Add(repoPathBox);
+
+        var loadRepoBtn = new Button { Content = "Load", Padding = new Thickness(16, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(gnomeBlue), Foreground = Brushes.White };
+        loadRepoBtn.Click += (s, e) =>
+        {
+            if (DataContext is IssuesViewModel vm)
+            {
+                vm.LoadRepositoryIssuesCommand.Execute(null);
+            }
+        };
+        repoSearchRow.Children.Add(loadRepoBtn);
+        searchRepoStack.Children.Add(repoSearchRow);
+
+        // Issues list for repo search
+        var repoIssuesList = new ListBox
+        {
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0),
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        repoIssuesList.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
+        repoIssuesList.ItemTemplate = CreateIssueTemplate(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed);
+        searchRepoStack.Children.Add(repoIssuesList);
+
+        var searchRepoBorder = new Border
+        {
+            Child = new Border
+            {
+                Child = searchRepoStack,
+                Padding = new Thickness(16)
+            },
+            Background = new SolidColorBrush(gnomeSurface),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(gnomeBorder),
+            IsVisible = false
+        };
+
         // Tab switching
         projectIssuesButton.Click += (s, e) =>
         {
@@ -277,8 +349,11 @@ public class IssuesView : UserControl
             projectIssuesButton.Foreground = Brushes.White;
             searchIssuesButton.Background = new SolidColorBrush(gnomeSurface);
             searchIssuesButton.Foreground = new SolidColorBrush(gnomeText);
+            searchRepoButton.Background = new SolidColorBrush(gnomeSurface);
+            searchRepoButton.Foreground = new SolidColorBrush(gnomeText);
             projectIssuesBorder.IsVisible = true;
             searchBorder.IsVisible = false;
+            searchRepoBorder.IsVisible = false;
             if (DataContext is IssuesViewModel vm) vm.ViewMode = "ProjectIssues";
         };
 
@@ -288,15 +363,33 @@ public class IssuesView : UserControl
             projectIssuesButton.Foreground = new SolidColorBrush(gnomeText);
             searchIssuesButton.Background = new SolidColorBrush(gnomeBlue);
             searchIssuesButton.Foreground = Brushes.White;
+            searchRepoButton.Background = new SolidColorBrush(gnomeSurface);
+            searchRepoButton.Foreground = new SolidColorBrush(gnomeText);
             projectIssuesBorder.IsVisible = false;
             searchBorder.IsVisible = true;
+            searchRepoBorder.IsVisible = false;
             if (DataContext is IssuesViewModel vm) vm.ViewMode = "SearchIssues";
+        };
+
+        searchRepoButton.Click += (s, e) =>
+        {
+            projectIssuesButton.Background = new SolidColorBrush(gnomeSurface);
+            projectIssuesButton.Foreground = new SolidColorBrush(gnomeText);
+            searchIssuesButton.Background = new SolidColorBrush(gnomeSurface);
+            searchIssuesButton.Foreground = new SolidColorBrush(gnomeText);
+            searchRepoButton.Background = new SolidColorBrush(gnomeBlue);
+            searchRepoButton.Foreground = Brushes.White;
+            projectIssuesBorder.IsVisible = false;
+            searchBorder.IsVisible = false;
+            searchRepoBorder.IsVisible = true;
+            if (DataContext is IssuesViewModel vm) vm.ViewMode = "SearchRepository";
         };
 
         // Tab container
         var tabContainer = new Grid();
         tabContainer.Children.Add(projectIssuesBorder);
         tabContainer.Children.Add(searchBorder);
+        tabContainer.Children.Add(searchRepoBorder);
         DockPanel.SetDock(tabContainer, Dock.Top);
         mainDockPanel.Children.Add(tabContainer);
 

@@ -34,6 +34,16 @@ public interface IGitLabApiService
     Task<List<Issue>> SearchIssuesAsync(string query, int page = 1, int perPage = 20);
 
     /// <summary>
+    /// Gets a project by its path (e.g., "group/project")
+    /// </summary>
+    Task<Project?> GetProjectByPathAsync(string projectPath);
+
+    /// <summary>
+    /// Updates an issue state (open/close)
+    /// </summary>
+    Task<bool> UpdateIssueStateAsync(int projectId, int issueIid, string newState);
+
+    /// <summary>
     /// Tests the API connection and authentication
     /// </summary>
     Task<bool> TestConnectionAsync();
@@ -128,10 +138,13 @@ public class GitLabApiService : IGitLabApiService
             // Fetch issues for a specific project
             var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/issues?page={page}&per_page={perPage}&state={state}&order_by=updated_at&sort=desc";
             
+            Console.WriteLine($"[API] GetIssuesAsync - Fetching issues for project {projectId}, state={state}, page={page}");
+            Console.WriteLine($"[API] URL: {url}");
+            
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"GitLab API Error: {response.StatusCode}");
+                Console.WriteLine($"[API] ERROR: GitLab API Error: {response.StatusCode}");
                 return new List<Issue>();
             }
 
@@ -143,11 +156,13 @@ public class GitLabApiService : IGitLabApiService
             };
 
             var issues = JsonSerializer.Deserialize<List<Issue>>(json, options) ?? new List<Issue>();
+            Console.WriteLine($"[API] Successfully fetched {issues.Count} issues");
             return issues;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to fetch issues: {ex.Message}");
+            Console.WriteLine($"[API] ERROR - Failed to fetch issues: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
             return new List<Issue>();
         }
     }
@@ -160,10 +175,13 @@ public class GitLabApiService : IGitLabApiService
             var encodedQuery = Uri.EscapeDataString(query);
             var url = $"{_gitlabUrl}/api/v4/issues?search={encodedQuery}&page={page}&per_page={perPage}&order_by=updated_at&sort=desc";
             
+            Console.WriteLine($"[API] SearchIssuesAsync - Searching for issues with query: {query}, page={page}");
+            Console.WriteLine($"[API] URL: {url}");
+            
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"GitLab API Error: {response.StatusCode}");
+                Console.WriteLine($"[API] ERROR: Search failed (Status: {response.StatusCode})");
                 return new List<Issue>();
             }
 
@@ -175,11 +193,13 @@ public class GitLabApiService : IGitLabApiService
             };
 
             var issues = JsonSerializer.Deserialize<List<Issue>>(json, options) ?? new List<Issue>();
+            Console.WriteLine($"[API] Successfully found {issues.Count} issues");
             return issues;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to search issues: {ex.Message}");
+            Console.WriteLine($"[API] ERROR - Failed to search issues: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
             return new List<Issue>();
         }
     }
@@ -223,7 +243,78 @@ public class GitLabApiService : IGitLabApiService
             return "Unknown";
         }
     }
-}
-    
 
+    public async Task<Project?> GetProjectByPathAsync(string projectPath)
+    {
+        try
+        {
+            var encodedPath = Uri.EscapeDataString(projectPath);
+            var url = $"{_gitlabUrl}/api/v4/projects/{encodedPath}";
+            
+            Console.WriteLine($"[API] GetProjectByPathAsync - Searching for project: {projectPath}");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] ERROR: Project not found (Status: {response.StatusCode})");
+                return null;
+            }
 
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var project = JsonSerializer.Deserialize<Project>(json, options);
+            if (project != null)
+            {
+                Console.WriteLine($"[API] Successfully found project: {project.Name} (ID: {project.Id})");
+            }
+            return project;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to get project: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateIssueStateAsync(int projectId, int issueIid, string newState)
+    {
+        try
+        {
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/issues/{issueIid}";
+            
+            Console.WriteLine($"[API] UpdateIssueStateAsync - Updating issue #{issueIid} in project {projectId} to state: {newState}");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var content = new StringContent(
+                JsonSerializer.Serialize(new { state_event = newState }),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+            
+            var response = await _httpClient.PutAsync(url, content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] Successfully updated issue #{issueIid} to {newState}");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine($"[API] ERROR: Failed to update issue (Status: {response.StatusCode})");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to update issue: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }}

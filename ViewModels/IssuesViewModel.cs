@@ -21,8 +21,10 @@ public class IssuesViewModel : ViewModelBase
     private IGitLabApiService? _gitLabService;
     private INavigationService? _navigationService;
     private Project? _currentProject;
-    private string _viewMode = "ProjectIssues"; // "ProjectIssues" or "SearchIssues"
+    private Project? _searchedProject;
+    private string _viewMode = "ProjectIssues"; // "ProjectIssues", "SearchIssues", or "SearchRepository"
     private string _searchQuery = "";
+    private string _repositoryPath = "";
     private bool _isSearching = false;
 
     public ObservableCollection<Issue> Issues
@@ -121,6 +123,12 @@ public class IssuesViewModel : ViewModelBase
         set => SetProperty(ref _currentProject, value);
     }
 
+    public string RepositoryPath
+    {
+        get => _repositoryPath;
+        set => SetProperty(ref _repositoryPath, value);
+    }
+
     public INavigationService? NavigationService
     {
         get => _navigationService;
@@ -129,6 +137,8 @@ public class IssuesViewModel : ViewModelBase
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Issue> OpenIssueCommand { get; }
     public IRelayCommand SearchIssuesCommand { get; }
+    public IRelayCommand LoadRepositoryIssuesCommand { get; }
+    public IRelayCommand<Issue> ToggleIssueStateCommand { get; }
     public IRelayCommand BackCommand { get; }
 
     public IssuesViewModel()
@@ -136,6 +146,9 @@ public class IssuesViewModel : ViewModelBase
         RefreshCommand = new AsyncRelayCommand(LoadIssuesAsync);
         OpenIssueCommand = new RelayCommand<Issue>(OpenIssue);
         SearchIssuesCommand = new AsyncRelayCommand(SearchIssuesAsync);
+        LoadRepositoryIssuesCommand = new AsyncRelayCommand(LoadRepositoryIssuesAsync);
+        ToggleIssueStateCommand = new AsyncRelayCommand<Issue>(ToggleIssueStateAsync);
+        BackCommand = new RelayCommand(() => { });
         BackCommand = new RelayCommand(() => { });
     }
 
@@ -165,6 +178,7 @@ public class IssuesViewModel : ViewModelBase
 
         IsLoading = true;
         LoadingMessage = $"Fetching issues for {CurrentProject.Name}...";
+        Console.WriteLine($"[ViewModel] LoadIssuesAsync - Loading issues for project '{CurrentProject.Name}' (ID: {CurrentProject.Id}), state filter: {StateFilter}");
 
         try
         {
@@ -172,6 +186,7 @@ public class IssuesViewModel : ViewModelBase
             
             _allIssues = issues;
             ApplyFilters();
+            Console.WriteLine($"[ViewModel] LoadIssuesAsync - Received {issues.Count} issues, displaying {Issues.Count} after filters");
 
             if (Issues.Count == 0)
             {
@@ -184,6 +199,7 @@ public class IssuesViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[ViewModel] LoadIssuesAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
             LoadingMessage = $"Error: {ex.Message}";
         }
         finally
@@ -209,6 +225,7 @@ public class IssuesViewModel : ViewModelBase
 
         IsSearching = true;
         LoadingMessage = "Searching issues...";
+        Console.WriteLine($"[ViewModel] SearchIssuesAsync - Searching for issues with query: '{SearchQuery}'");
 
         try
         {
@@ -219,6 +236,7 @@ public class IssuesViewModel : ViewModelBase
             {
                 Issues.Add(issue);
             }
+            Console.WriteLine($"[ViewModel] SearchIssuesAsync - Found {results.Count} issues");
 
             LoadingMessage = results.Count == 0 
                 ? $"No issues found matching '{SearchQuery}'" 
@@ -226,6 +244,7 @@ public class IssuesViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[ViewModel] SearchIssuesAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
             LoadingMessage = $"Search error: {ex.Message}";
         }
         finally
@@ -287,5 +306,107 @@ public class IssuesViewModel : ViewModelBase
             Console.WriteLine($"Failed to open issue: {ex.Message}");
         }
     }
-}
 
+    private async Task LoadRepositoryIssuesAsync()
+    {
+        if (_gitLabService == null || string.IsNullOrWhiteSpace(RepositoryPath))
+        {
+            LoadingMessage = "Please enter a repository path or URL";
+            return;
+        }
+
+        IsLoading = true;
+        LoadingMessage = "Searching for repository...";
+        Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Loading repository from input: {RepositoryPath}");
+
+        try
+        {
+            // Extract project path from URL if needed
+            var projectPath = RepositoryPath.Trim();
+            if (projectPath.Contains("http"))
+            {
+                // Extract path from URL like "https://gitlab.com/group/project"
+                Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Detected URL, parsing...");
+                var uri = new Uri(projectPath);
+                projectPath = uri.AbsolutePath.TrimStart('/').TrimEnd('/');
+                if (projectPath.EndsWith(".git"))
+                    projectPath = projectPath.Substring(0, projectPath.Length - 4);
+                Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Extracted project path: {projectPath}");
+            }
+
+            var project = await _gitLabService.GetProjectByPathAsync(projectPath);
+            if (project == null)
+            {
+                LoadingMessage = $"Repository '{projectPath}' not found";
+                Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Project not found: {projectPath}");
+                Issues.Clear();
+                return;
+            }
+
+            _searchedProject = project;
+            LoadingMessage = $"Fetching issues for {project.Name}...";
+            Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Found project: {project.Name} (ID: {project.Id}), loading issues...");
+
+            var issues = await _gitLabService.GetIssuesAsync(project.Id, state: StateFilter);
+            _allIssues = issues;
+            ApplyFilters();
+            Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Loaded {issues.Count} issues, displaying {Issues.Count} after filters");
+
+            LoadingMessage = issues.Count == 0
+                ? $"No {StateFilter} issues found in {project.Name}"
+                : $"Loaded {Issues.Count} of {_allIssues.Count} issues from {project.Name}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
+            LoadingMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task ToggleIssueStateAsync(Issue? issue)
+    {
+        if (issue == null || _gitLabService == null)
+            return;
+
+        var projectId = CurrentProject?.Id ?? _searchedProject?.Id;
+        if (projectId == null)
+            return;
+
+        var newState = issue.State == "opened" ? "close" : "reopen";
+        IsLoading = true;
+        Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - Toggling issue #{issue.Iid} ('{issue.Title}') from '{issue.State}' to '{newState}'");
+
+        try
+        {
+            var success = await _gitLabService.UpdateIssueStateAsync(projectId.Value, issue.Iid, newState);
+            if (success)
+            {
+                LoadingMessage = $"Issue {newState}d successfully";
+                Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - Successfully toggled issue, reloading...");
+                // Reload issues to update state
+                if (ViewMode == "ProjectIssues" && CurrentProject != null)
+                    _ = LoadIssuesAsync();
+                else if (ViewMode == "SearchRepository")
+                    _ = LoadRepositoryIssuesAsync();
+            }
+            else
+            {
+                Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - Failed to toggle issue state");
+                LoadingMessage = "Failed to update issue state";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
+            LoadingMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
