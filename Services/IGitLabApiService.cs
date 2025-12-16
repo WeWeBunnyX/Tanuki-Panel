@@ -52,6 +52,26 @@ public interface IGitLabApiService
     /// Gets the current authenticated user info
     /// </summary>
     Task<string> GetCurrentUserAsync();
+
+    /// <summary>
+    /// Fetches container registry repositories for a specific project
+    /// </summary>
+    Task<List<RegistryRepository>> GetRegistryRepositoriesAsync(int projectId, int page = 1, int perPage = 20);
+
+    /// <summary>
+    /// Fetches tags for a specific registry repository
+    /// </summary>
+    Task<List<RegistryTag>> GetRegistryTagsAsync(int projectId, int repositoryId, int page = 1, int perPage = 20);
+
+    /// <summary>
+    /// Deletes a tag from the container registry
+    /// </summary>
+    Task<bool> DeleteRegistryTagAsync(int projectId, int repositoryId, string tagName);
+
+    /// <summary>
+    /// Fetches the logs for a specific registry tag (if available)
+    /// </summary>
+    Task<string> GetRegistryTagLogsAsync(int projectId, int repositoryId, string tagName);
 }
 
 public class GitLabApiService : IGitLabApiService
@@ -317,4 +337,176 @@ public class GitLabApiService : IGitLabApiService
             Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
             return false;
         }
-    }}
+    }
+
+    // ...existing code...
+
+
+    public async Task<List<RegistryRepository>> GetRegistryRepositoriesAsync(int projectId, int page = 1, int perPage = 20)
+    {
+        try
+        {
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/registry/repositories?page={page}&per_page={perPage}";
+            
+            Console.WriteLine($"[API] GetRegistryRepositoriesAsync - Fetching registries for project {projectId}");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] ERROR: GitLab API Error: {response.StatusCode}");
+                return new List<RegistryRepository>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var registries = JsonSerializer.Deserialize<List<RegistryRepository>>(json, options) ?? new List<RegistryRepository>();
+            Console.WriteLine($"[API] Successfully fetched {registries.Count} registries");
+            return registries;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to fetch registries: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return new List<RegistryRepository>();
+        }
+    }
+
+    public async Task<List<RegistryTag>> GetRegistryTagsAsync(int projectId, int repositoryId, int page = 1, int perPage = 20)
+    {
+        try
+        {
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/registry/repositories/{repositoryId}/tags?page={page}&per_page={perPage}";
+            
+            Console.WriteLine($"[API] GetRegistryTagsAsync - Fetching tags for registry {repositoryId} in project {projectId}");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] ERROR: GitLab API Error: {response.StatusCode}");
+                return new List<RegistryTag>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var tags = JsonSerializer.Deserialize<List<RegistryTag>>(json, options) ?? new List<RegistryTag>();
+            Console.WriteLine($"[API] Successfully fetched {tags.Count} tags");
+            return tags;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to fetch tags: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return new List<RegistryTag>();
+        }
+    }
+
+    public async Task<bool> DeleteRegistryTagAsync(int projectId, int repositoryId, string tagName)
+    {
+        try
+        {
+            var encodedTag = Uri.EscapeDataString(tagName);
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/registry/repositories/{repositoryId}/tags/{encodedTag}";
+            
+            Console.WriteLine($"[API] DeleteRegistryTagAsync - Deleting tag '{tagName}' from registry {repositoryId}");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.DeleteAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] Successfully deleted tag '{tagName}'");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine($"[API] ERROR: Failed to delete tag (Status: {response.StatusCode})");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to delete tag: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<string> GetRegistryTagLogsAsync(int projectId, int repositoryId, string tagName)
+    {
+        try
+        {
+            // GitLab doesn't have a dedicated registry tag logs endpoint
+            // We'll return a formatted string with available information about the tag
+            var encodedTag = Uri.EscapeDataString(tagName);
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/registry/repositories/{repositoryId}/tags/{encodedTag}";
+            
+            Console.WriteLine($"[API] GetRegistryTagLogsAsync - Fetching details for tag '{tagName}'");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[API] ERROR: Failed to fetch tag details (Status: {response.StatusCode})");
+                return $"Error: Could not fetch logs for tag '{tagName}'";
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var tag = JsonSerializer.Deserialize<RegistryTag>(json, options);
+            if (tag != null)
+            {
+                var logs = $@"Container Registry Tag Information
+========================================
+Tag Name: {tag.Name}
+Digest: {tag.Digest}
+Revision: {tag.ShortRevision}
+Created: {tag.CreatedAt:yyyy-MM-dd HH:mm:ss}
+Total Size: {FormatBytes(tag.TotalSize)}
+Location: {tag.Location}
+========================================
+
+This tag represents a container image in the registry.
+Use 'docker pull {tag.Location}' to pull this image.";
+                
+                return logs;
+            }
+
+            return $"No information available for tag '{tagName}'";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to fetch tag logs: {ex.Message}");
+            return $"Error fetching logs: {ex.Message}";
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
