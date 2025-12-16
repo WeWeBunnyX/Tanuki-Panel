@@ -41,4 +41,9 @@ public class NavigationService : INavigationService
             _mainWindowViewModel.CurrentViewModel = _currentViewModel;
         }
     }
+
+    public MainWindowViewModel? GetMainWindowViewModel()
+    {
+        return _mainWindowViewModel;
+    }
 }

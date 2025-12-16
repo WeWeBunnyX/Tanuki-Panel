@@ -1,4 +1,5 @@
 ﻿using System;
+using TanukiPanel.Models;
 using TanukiPanel.Services;
 
 namespace TanukiPanel.ViewModels;
@@ -6,11 +7,25 @@ namespace TanukiPanel.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
 	private ViewModelBase? _currentViewModel;
+	private string _currentUserName = "Not logged in";
+	private string _currentUserAvatarUrl = "";
 
 	public ViewModelBase? CurrentViewModel
 	{
 		get => _currentViewModel;
 		set => SetProperty(ref _currentViewModel, value);
+	}
+
+	public string CurrentUserName
+	{
+		get => _currentUserName;
+		set => SetProperty(ref _currentUserName, value);
+	}
+
+	public string CurrentUserAvatarUrl
+	{
+		get => _currentUserAvatarUrl;
+		set => SetProperty(ref _currentUserAvatarUrl, value);
 	}
 
 	private readonly IApiKeyPersistence _persistence;
@@ -26,5 +41,20 @@ public partial class MainWindowViewModel : ViewModelBase
 	{
 		var welcomeViewModel = new WelcomeViewModel(navigationService, _persistence);
 		CurrentViewModel = welcomeViewModel;
+	}
+
+	public async void SetCurrentUser(User? user)
+	{
+		if (user != null)
+		{
+			CurrentUserName = $"{user.Name} (@{user.Username})";
+			CurrentUserAvatarUrl = user.AvatarUrl;
+			Console.WriteLine($"[ViewModel] MainWindow - User updated: {CurrentUserName}, Avatar: {CurrentUserAvatarUrl}");
+		}
+		else
+		{
+			CurrentUserName = "Not logged in";
+			CurrentUserAvatarUrl = "";
+		}
 	}
 }
