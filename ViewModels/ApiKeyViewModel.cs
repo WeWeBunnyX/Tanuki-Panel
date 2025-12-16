@@ -40,7 +40,7 @@ public class ApiKeyViewModel : ViewModelBase
             var freshGitLabService = new GitLabApiService("https://gitlab.com", apiKey);
             
             var sidebarVM = new SideBarContentViewModel();
-            sidebarVM.Initialize(freshGitLabService);
+            sidebarVM.Initialize(freshGitLabService, _navigationService);
             _navigationService.Navigate(sidebarVM);
         }
     }

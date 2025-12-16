@@ -403,6 +403,18 @@ public class ProjectsView : UserControl
             openBtn.Click += (s, e) => OpenProject(project);
             buttonsStack.Children.Add(openBtn);
 
+            var issuesBtn = new Button
+            {
+                Content = "Issues",
+                Padding = new Thickness(12, 6),
+                FontSize = 10,
+                Background = new SolidColorBrush(accentColor),
+                Foreground = Brushes.White,
+                CornerRadius = new CornerRadius(4)
+            };
+            issuesBtn.Click += (s, e) => ViewIssues(project);
+            buttonsStack.Children.Add(issuesBtn);
+
             var copyBtn = new Button
             {
                 Content = "Copy",
@@ -503,6 +515,21 @@ public class ProjectsView : UserControl
         catch (Exception ex)
         {
             _toastService?.ShowToast($"Failed to copy: {ex.Message}", ToastType.Error);
+        }
+    }
+
+    private void ViewIssues(Project? project)
+    {
+        if (project == null || DataContext is not ProjectsViewModel vm) return;
+        
+        try
+        {
+            vm.ViewIssuesCommand.Execute(project);
+            _toastService?.ShowToast($"Loading issues for {project.Name}...", ToastType.Info);
+        }
+        catch (Exception ex)
+        {
+            _toastService?.ShowToast($"Failed to load issues: {ex.Message}", ToastType.Error);
         }
     }
 }

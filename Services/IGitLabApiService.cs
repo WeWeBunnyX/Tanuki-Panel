@@ -24,6 +24,16 @@ public interface IGitLabApiService
     Task<List<Project>> SearchProjectsAsync(string query, int page = 1, int perPage = 20);
 
     /// <summary>
+    /// Fetches issues for a specific project
+    /// </summary>
+    Task<List<Issue>> GetIssuesAsync(int projectId, int page = 1, int perPage = 20, string state = "all");
+
+    /// <summary>
+    /// Searches for issues across all projects or within a specific project
+    /// </summary>
+    Task<List<Issue>> SearchIssuesAsync(string query, int page = 1, int perPage = 20);
+
+    /// <summary>
     /// Tests the API connection and authentication
     /// </summary>
     Task<bool> TestConnectionAsync();
@@ -111,6 +121,69 @@ public class GitLabApiService : IGitLabApiService
         }
     }
 
+    public async Task<List<Issue>> GetIssuesAsync(int projectId, int page = 1, int perPage = 20, string state = "all")
+    {
+        try
+        {
+            // Fetch issues for a specific project
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/issues?page={page}&per_page={perPage}&state={state}&order_by=updated_at&sort=desc";
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"GitLab API Error: {response.StatusCode}");
+                return new List<Issue>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var issues = JsonSerializer.Deserialize<List<Issue>>(json, options) ?? new List<Issue>();
+            return issues;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to fetch issues: {ex.Message}");
+            return new List<Issue>();
+        }
+    }
+
+    public async Task<List<Issue>> SearchIssuesAsync(string query, int page = 1, int perPage = 20)
+    {
+        try
+        {
+            // Search issues across all projects
+            var encodedQuery = Uri.EscapeDataString(query);
+            var url = $"{_gitlabUrl}/api/v4/issues?search={encodedQuery}&page={page}&per_page={perPage}&order_by=updated_at&sort=desc";
+            
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"GitLab API Error: {response.StatusCode}");
+                return new List<Issue>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var issues = JsonSerializer.Deserialize<List<Issue>>(json, options) ?? new List<Issue>();
+            return issues;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to search issues: {ex.Message}");
+            return new List<Issue>();
+        }
+    }
+
     public async Task<bool> TestConnectionAsync()
     {
         try
@@ -151,3 +224,6 @@ public class GitLabApiService : IGitLabApiService
         }
     }
 }
+    
+
+

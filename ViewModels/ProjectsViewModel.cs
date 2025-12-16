@@ -20,6 +20,7 @@ public class ProjectsViewModel : ViewModelBase
     private bool _hideArchived = true;
     private string _sortBy = "LastActivity"; // LastActivity, Name, Stars
     private IGitLabApiService? _gitLabService;
+    private INavigationService? _navigationService;
     private string _viewMode = "MyProjects"; // "MyProjects" or "SearchProjects"
     private string _searchQuery = "";
     private bool _isSearching = false;
@@ -159,6 +160,7 @@ public class ProjectsViewModel : ViewModelBase
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Project> OpenProjectCommand { get; }
     public IRelayCommand<Project> CopyCloneUrlCommand { get; }
+    public IRelayCommand<Project> ViewIssuesCommand { get; }
     public IRelayCommand SearchProjectsCommand { get; }
     public IRelayCommand NextPageCommand { get; }
     public IRelayCommand PreviousPageCommand { get; }
@@ -168,14 +170,16 @@ public class ProjectsViewModel : ViewModelBase
         RefreshCommand = new AsyncRelayCommand(LoadProjectsAsync);
         OpenProjectCommand = new RelayCommand<Project>(OpenProject);
         CopyCloneUrlCommand = new RelayCommand<Project>(CopyCloneUrl);
+        ViewIssuesCommand = new RelayCommand<Project>(ViewIssues);
         SearchProjectsCommand = new AsyncRelayCommand(SearchProjectsAsync);
         NextPageCommand = new AsyncRelayCommand(NextPageAsync);
         PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync);
     }
 
-    public void Initialize(IGitLabApiService gitLabService)
+    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
     {
         _gitLabService = gitLabService;
+        _navigationService = navigationService;
         _ = LoadProjectsAsync();
     }
 
@@ -476,6 +480,25 @@ public class ProjectsViewModel : ViewModelBase
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to copy URL: {ex.Message}");
+        }
+    }
+
+    private void ViewIssues(Project? project)
+    {
+        if (project == null || _navigationService == null || _gitLabService == null)
+            return;
+
+        try
+        {
+            var issuesViewModel = new IssuesViewModel();
+            issuesViewModel.Initialize(_gitLabService, _navigationService);
+            issuesViewModel.SetProject(project);
+            
+            _navigationService.Navigate(issuesViewModel);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to navigate to issues: {ex.Message}");
         }
     }
 }
