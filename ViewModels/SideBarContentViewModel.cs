@@ -9,6 +9,7 @@ public class SideBarContentViewModel : ViewModelBase
     private ViewModelBase? _currentViewModel;
     private IGitLabApiService? _gitLabService;
     private INavigationService? _navigationService;
+    private IFilePickerService? _filePickerService;
 
     public string Title
     {
@@ -28,10 +29,11 @@ public class SideBarContentViewModel : ViewModelBase
         SelectCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<string>(OnSelect);
     }
 
-    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
+    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null, IFilePickerService? filePickerService = null)
     {
         _gitLabService = gitLabService;
         _navigationService = navigationService;
+        _filePickerService = filePickerService;
         var projectsVM = new ProjectsViewModel();
         projectsVM.Initialize(_gitLabService, _navigationService);
         CurrentViewModel = projectsVM;
@@ -56,7 +58,7 @@ public class SideBarContentViewModel : ViewModelBase
                 break;
             case "Option3":
                 var packageVM = new PackageRegistryViewModel();
-                packageVM.Initialize(_gitLabService!);
+                packageVM.Initialize(_gitLabService!, _filePickerService);
                 CurrentViewModel = packageVM;
                 Title = "📥 Package Registry";
                 break;

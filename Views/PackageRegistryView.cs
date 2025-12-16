@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using System;
 using TanukiPanel.Models;
+using TanukiPanel.Services;
 using TanukiPanel.ViewModels;
 using TanukiPanel.Views.Converters;
 
@@ -15,6 +16,20 @@ public class PackageRegistryView : UserControl
 {
     public PackageRegistryView()
     {
+        // Wire up FilePickerService when the view is loaded
+        this.AttachedToVisualTree += (s, e) =>
+        {
+            if (this.DataContext is PackageRegistryViewModel vm)
+            {
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel != null)
+                {
+                    var filePickerService = new FilePickerService(topLevel);
+                    vm.Initialize(vm.GitLabService!, filePickerService);
+                }
+            }
+        };
+
         var gnomeBlue = Color.Parse("#3584E4");
         var gnomeBackground = Color.Parse("#F6F5F4");
         var gnomeSurface = Color.Parse("#FFFFFF");

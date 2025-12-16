@@ -107,6 +107,11 @@ public class PackageRegistryViewModel : ViewModelBase
         set => SetProperty(ref _uploadFileName, value);
     }
 
+    public IGitLabApiService? GitLabService
+    {
+        get => _gitLabService;
+    }
+
     public IRelayCommand LoadRepositoryCommand { get; }
     public IRelayCommand<Package> DownloadPackageCommand { get; }
     public IRelayCommand CancelDownloadCommand { get; }
