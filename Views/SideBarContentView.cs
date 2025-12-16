@@ -62,8 +62,7 @@ public class SideBarContentView : UserControl
         var buttonOptions = new[]
         {
             ("📊", "Projects", "Projects"),
-            ("�", "Container Registry", "Option2"),
-            ("📋", "Issues", "Issues"),
+            ("�", "Container Registry", "Option2"),            ("📥", "Package Registry", "Option3"),            ("📋", "Issues", "Issues"),
             ("🔧", "Settings", "Option4"),
             ("📈", "Analytics", "Option5")
         };

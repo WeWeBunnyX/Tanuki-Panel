@@ -64,6 +64,11 @@ public interface IGitLabApiService
     Task<List<RegistryTag>> GetRegistryTagsAsync(int projectId, int repositoryId, int page = 1, int perPage = 20);
 
     /// <summary>
+    /// Fetches packages from the Package Registry for a specific project
+    /// </summary>
+    Task<List<Package>> GetPackagesAsync(int projectId, int page = 1, int perPage = 20);
+
+    /// <summary>
     /// Deletes a tag from the container registry
     /// </summary>
     Task<bool> DeleteRegistryTagAsync(int projectId, int repositoryId, string tagName);
@@ -350,15 +355,23 @@ public class GitLabApiService : IGitLabApiService
             
             Console.WriteLine($"[API] GetRegistryRepositoriesAsync - Fetching registries for project {projectId}");
             Console.WriteLine($"[API] URL: {url}");
+            Console.WriteLine($"[API] GitLab Base URL: {_gitlabUrl}");
             
             var response = await _httpClient.GetAsync(url);
+            Console.WriteLine($"[API] GetRegistryRepositoriesAsync - Response status: {response.StatusCode}");
+            
             if (!response.IsSuccessStatusCode)
             {
+                var errorContent = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"[API] ERROR: GitLab API Error: {response.StatusCode}");
+                Console.WriteLine($"[API] Error response body: {errorContent}");
                 return new List<RegistryRepository>();
             }
 
             var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[API] GetRegistryRepositoriesAsync - Raw JSON response length: {json.Length}");
+            Console.WriteLine($"[API] GetRegistryRepositoriesAsync - Raw JSON: {(json.Length > 200 ? json.Substring(0, 200) + "..." : json)}");
+            
             var options = new JsonSerializerOptions 
             { 
                 PropertyNameCaseInsensitive = true,
@@ -366,12 +379,17 @@ public class GitLabApiService : IGitLabApiService
             };
 
             var registries = JsonSerializer.Deserialize<List<RegistryRepository>>(json, options) ?? new List<RegistryRepository>();
-            Console.WriteLine($"[API] Successfully fetched {registries.Count} registries");
+            Console.WriteLine($"[API] Successfully deserialized {registries.Count} registries");
+            foreach (var registry in registries)
+            {
+                Console.WriteLine($"[API]   - Registry: {registry.Name} (ID: {registry.Id}, Path: {registry.Path})");
+            }
             return registries;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[API] ERROR - Failed to fetch registries: {ex.Message}");
+            Console.WriteLine($"[API] Exception type: {ex.GetType().Name}");
             Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
             return new List<RegistryRepository>();
         }
@@ -494,6 +512,53 @@ Use 'docker pull {tag.Location}' to pull this image.";
         {
             Console.WriteLine($"[API] ERROR - Failed to fetch tag logs: {ex.Message}");
             return $"Error fetching logs: {ex.Message}";
+        }
+    }
+
+    public async Task<List<Package>> GetPackagesAsync(int projectId, int page = 1, int perPage = 20)
+    {
+        try
+        {
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/packages?page={page}&per_page={perPage}";
+            
+            Console.WriteLine($"[API] GetPackagesAsync - Fetching packages for project {projectId}");
+            Console.WriteLine($"[API] URL: {url}");
+            
+            var response = await _httpClient.GetAsync(url);
+            Console.WriteLine($"[API] GetPackagesAsync - Response status: {response.StatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[API] ERROR: GitLab API Error: {response.StatusCode}");
+                Console.WriteLine($"[API] Error response body: {errorContent}");
+                return new List<Package>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[API] GetPackagesAsync - Raw JSON response length: {json.Length}");
+            Console.WriteLine($"[API] GetPackagesAsync - Raw JSON: {(json.Length > 200 ? json.Substring(0, 200) + "..." : json)}");
+            
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var packages = JsonSerializer.Deserialize<List<Package>>(json, options) ?? new List<Package>();
+            Console.WriteLine($"[API] Successfully deserialized {packages.Count} packages");
+            foreach (var package in packages)
+            {
+                Console.WriteLine($"[API]   - Package: {package.Name} v{package.Version} ({package.PackageType})");
+            }
+            return packages;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to fetch packages: {ex.Message}");
+            Console.WriteLine($"[API] Exception type: {ex.GetType().Name}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return new List<Package>();
         }
     }
 

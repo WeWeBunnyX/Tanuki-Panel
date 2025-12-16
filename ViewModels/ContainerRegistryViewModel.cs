@@ -12,6 +12,7 @@ public class ContainerRegistryViewModel : ViewModelBase
 {
     private ObservableCollection<RegistryRepository> _registries = new();
     private ObservableCollection<RegistryTag> _tags = new();
+    private ObservableCollection<Package> _packages = new();
     private string _repositoryPath = "";
     private string _loadingMessage = "Ready";
     private bool _isLoading = false;
@@ -31,6 +32,12 @@ public class ContainerRegistryViewModel : ViewModelBase
     {
         get => _tags;
         set => SetProperty(ref _tags, value);
+    }
+
+    public ObservableCollection<Package> Packages
+    {
+        get => _packages;
+        set => SetProperty(ref _packages, value);
     }
 
     public string RepositoryPath
@@ -105,53 +112,122 @@ public class ContainerRegistryViewModel : ViewModelBase
 
     private async Task LoadRepositoryAsync()
     {
-        if (_gitLabService == null || string.IsNullOrWhiteSpace(RepositoryPath))
+        Console.WriteLine($"[ViewModel] LoadRepositoryAsync called - RepositoryPath: '{RepositoryPath}'");
+        Console.WriteLine($"[ViewModel] LoadRepositoryAsync - _gitLabService is null: {_gitLabService == null}");
+        Console.WriteLine($"[ViewModel] LoadRepositoryAsync - RepositoryPath is empty/whitespace: {string.IsNullOrWhiteSpace(RepositoryPath)}");
+        
+        if (_gitLabService == null)
         {
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - ERROR: GitLabService not initialized");
+            LoadingMessage = "Service not initialized";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(RepositoryPath))
+        {
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - ERROR: RepositoryPath is empty or whitespace");
             LoadingMessage = "Please enter a repository path";
             return;
         }
 
         IsLoading = true;
-        LoadingMessage = $"Loading repository: {RepositoryPath}...";
-        Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Loading: {RepositoryPath}");
+        
+        // Extract path from full URL if user entered one
+        string projectPath = RepositoryPath;
+        Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Input: {RepositoryPath}");
+        
+        if (RepositoryPath.StartsWith("http://") || RepositoryPath.StartsWith("https://"))
+        {
+            try
+            {
+                Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Detected full URL, extracting path...");
+                var uri = new Uri(RepositoryPath);
+                // Extract path and remove leading slash
+                projectPath = uri.AbsolutePath.TrimStart('/');
+                // Remove .git suffix if present
+                if (projectPath.EndsWith(".git"))
+                {
+                    projectPath = projectPath.Substring(0, projectPath.Length - 4);
+                }
+                Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Extracted path from URL: '{projectPath}'");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ViewModel] LoadRepositoryAsync - ERROR parsing URL: {ex.Message}");
+                LoadingMessage = $"Invalid URL format: {ex.Message}";
+                IsLoading = false;
+                return;
+            }
+        }
+
+        LoadingMessage = $"Loading repository: {projectPath}...";
+        Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Final projectPath to use: '{projectPath}'");
 
         try
         {
-            var project = await _gitLabService.GetProjectByPathAsync(RepositoryPath);
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Calling GetProjectByPathAsync with: '{projectPath}'");
+            var project = await _gitLabService.GetProjectByPathAsync(projectPath);
+            
             if (project == null)
             {
-                LoadingMessage = $"Project not found: {RepositoryPath}";
+                Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Project not found for path: {projectPath}");
+                LoadingMessage = $"Project not found: {projectPath}";
                 Registries.Clear();
                 Tags.Clear();
+                Packages.Clear();
                 return;
             }
 
             SelectedProject = project;
             Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Found project: {project.Name} (ID: {project.Id})");
 
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Calling GetRegistryRepositoriesAsync with project ID: {project.Id}");
             var registries = await _gitLabService.GetRegistryRepositoriesAsync(project.Id);
+            
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Received {registries.Count} registries");
             Registries.Clear();
             foreach (var registry in registries)
             {
+                Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Adding registry: {registry.Name} (ID: {registry.Id})");
                 Registries.Add(registry);
             }
 
-            LoadingMessage = registries.Count > 0
-                ? $"Found {registries.Count} registr{(registries.Count == 1 ? "y" : "ies")} for {project.Name}"
-                : $"No registries found for {project.Name}";
+            // Also load packages from Package Registry
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Calling GetPackagesAsync with project ID: {project.Id}");
+            var packages = await _gitLabService.GetPackagesAsync(project.Id);
+            
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Received {packages.Count} packages");
+            Packages.Clear();
+            foreach (var package in packages)
+            {
+                Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Adding package: {package.Name} v{package.Version} ({package.PackageType})");
+                Packages.Add(package);
+            }
 
-            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Found {registries.Count} registries");
+            int totalItems = registries.Count + packages.Count;
+            string message = $"Found {registries.Count} container image(s) and {packages.Count} package(s)";
+            if (totalItems == 0)
+            {
+                message = $"No container images or packages found for {project.Name}";
+            }
+            LoadingMessage = message;
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - {message}");
+
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Complete. Found {registries.Count} registries");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - ERROR: {ex.Message}");
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Stack trace: {ex.StackTrace}");
             LoadingMessage = $"Error: {ex.Message}";
             Registries.Clear();
             Tags.Clear();
+            Packages.Clear();
         }
         finally
         {
             IsLoading = false;
+            Console.WriteLine($"[ViewModel] LoadRepositoryAsync - Done. IsLoading={IsLoading}, Message={LoadingMessage}");
         }
     }
 

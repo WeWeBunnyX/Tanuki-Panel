@@ -97,6 +97,82 @@ public class ContainerRegistryView : UserControl
         DockPanel.SetDock(repoSection, Dock.Top);
         mainDockPanel.Children.Add(repoSection);
 
+        // Upload section
+        var uploadSection = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#E8F4FD")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#B3D9F2")),
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(20),
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+
+        var uploadStack = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
+        uploadStack.Children.Add(new TextBlock
+        {
+            Text = "📤 Upload Container Image",
+            FontSize = 14,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(gnomeBlue),
+            TextAlignment = TextAlignment.Center
+        });
+
+        uploadStack.Children.Add(new TextBlock
+        {
+            Text = "Select a container image file or archive to upload to the registry",
+            FontSize = 11,
+            Foreground = new SolidColorBrush(gnomeSubtext),
+            TextAlignment = TextAlignment.Center
+        });
+
+        var uploadBtnRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, HorizontalAlignment = HorizontalAlignment.Center };
+
+        var uploadBtn = new Button
+        {
+            Content = "📁 Select File",
+            Padding = new Thickness(20, 10),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(gnomeBlue),
+            Foreground = Brushes.White
+        };
+        uploadBtn.Bind(Button.CommandProperty, new Binding("SelectFileCommand"));
+        uploadBtnRow.Children.Add(uploadBtn);
+
+        var uploadConfirmBtn = new Button
+        {
+            Content = "⬆️ Upload",
+            Padding = new Thickness(20, 10),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(gnomeGreen),
+            Foreground = Brushes.White
+        };
+        uploadConfirmBtn.Bind(Button.CommandProperty, new Binding("UploadFileCommand"));
+        uploadBtnRow.Children.Add(uploadConfirmBtn);
+
+        uploadStack.Children.Add(uploadBtnRow);
+
+        uploadStack.Children.Add(new TextBlock
+        {
+            Text = "Selected: (no file selected)",
+            FontSize = 10,
+            Foreground = new SolidColorBrush(gnomeSubtext),
+            TextAlignment = TextAlignment.Center
+        });
+        uploadStack.Children.Add(new TextBlock());  // Spacer
+
+        uploadSection.Child = uploadStack;
+        DockPanel.SetDock(uploadSection, Dock.Top);
+        mainDockPanel.Children.Add(uploadSection);
+
         // Content area
         var contentGrid = new Grid
         {

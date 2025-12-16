@@ -49,8 +49,16 @@ public class SideBarContentViewModel : ViewModelBase
                 Title = "📊 Projects Dashboard";
                 break;
             case "Option2": 
-                CurrentViewModel = new ContainerRegistryViewModel();
-                Title = "🚀 Pipelines";
+                var registryVM = new ContainerRegistryViewModel();
+                registryVM.Initialize(_gitLabService!);
+                CurrentViewModel = registryVM;
+                Title = "📦 Container Registry";
+                break;
+            case "Option3":
+                var packageVM = new PackageRegistryViewModel();
+                packageVM.Initialize(_gitLabService!);
+                CurrentViewModel = packageVM;
+                Title = "📥 Package Registry";
                 break;
             case "Issues": 
                 var issuesVM = new IssuesViewModel();
