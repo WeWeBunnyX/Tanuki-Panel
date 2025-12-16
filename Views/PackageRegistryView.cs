@@ -87,6 +87,19 @@ public class PackageRegistryView : UserControl
         selectBtn.Bind(Button.CommandProperty, new Binding("LoadRepositoryCommand"));
         repoInputRow.Children.Add(selectBtn);
 
+        var uploadBtn = new Button
+        {
+            Content = "⬆️ Upload Package",
+            Padding = new Thickness(20, 10),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(gnomeOrange),
+            Foreground = Brushes.White
+        };
+        uploadBtn.Bind(Button.CommandProperty, new Binding("UploadPackageCommand"));
+        uploadBtn.Bind(IsEnabledProperty, new Binding("IsUploading") { Converter = new InvertBooleanConverter() });
+        repoInputRow.Children.Add(uploadBtn);
+
         repoSection.Children.Add(repoInputRow);
         DockPanel.SetDock(repoSection, Dock.Top);
         mainDockPanel.Children.Add(repoSection);
@@ -148,6 +161,64 @@ public class PackageRegistryView : UserControl
         downloadProgressSection.Child = downloadProgressStack;
         DockPanel.SetDock(downloadProgressSection, Dock.Top);
         mainDockPanel.Children.Add(downloadProgressSection);
+
+        // Upload progress section (shown when uploading)
+        var uploadProgressSection = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#FFF4E6")),
+            BorderBrush = new SolidColorBrush(gnomeOrange),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 12),
+            IsVisible = false
+        };
+        uploadProgressSection.Bind(IsVisibleProperty, new Binding("IsUploading"));
+
+        var uploadProgressStack = new StackPanel { Spacing = 8 };
+
+        var uploadStatusBlock = new TextBlock
+        {
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(gnomeText)
+        };
+        uploadStatusBlock.Bind(TextBlock.TextProperty, new Binding("UploadFileName"));
+        uploadProgressStack.Children.Add(uploadStatusBlock);
+
+        var uploadProgressBar = new ProgressBar
+        {
+            Height = 20,
+            CornerRadius = new CornerRadius(4)
+        };
+        uploadProgressBar.Bind(ProgressBar.ValueProperty, new Binding("UploadProgress"));
+        uploadProgressStack.Children.Add(uploadProgressBar);
+
+        var uploadProgressTextBlock = new TextBlock
+        {
+            FontSize = 10,
+            Foreground = new SolidColorBrush(gnomeSubtext)
+        };
+        uploadProgressTextBlock.Bind(TextBlock.TextProperty, new Binding("UploadProgress") { Converter = new ProgressPercentageConverter() });
+        uploadProgressStack.Children.Add(uploadProgressTextBlock);
+
+        var uploadCancelBtn = new Button
+        {
+            Content = "Cancel Upload",
+            Padding = new Thickness(12, 6),
+            FontSize = 10,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(Color.Parse("#E01B24")),
+            Foreground = Brushes.White,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+        uploadCancelBtn.Bind(Button.CommandProperty, new Binding("CancelUploadCommand"));
+        uploadProgressStack.Children.Add(uploadCancelBtn);
+
+        uploadProgressSection.Child = uploadProgressStack;
+        DockPanel.SetDock(uploadProgressSection, Dock.Top);
+        mainDockPanel.Children.Add(uploadProgressSection);
 
         // Status bar
         var statusBar = new TextBlock

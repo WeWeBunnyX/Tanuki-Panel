@@ -25,6 +25,11 @@ public class PackageRegistryViewModel : ViewModelBase
     private string _downloadFileName = "";
     private CancellationTokenSource? _downloadCancellationToken;
     private HttpClient _httpClient = new HttpClient();
+    private bool _isUploading = false;
+    private double _uploadProgress = 0;
+    private string _uploadFileName = "";
+    private CancellationTokenSource? _uploadCancellationToken;
+    private IFilePickerService? _filePickerService;
 
     public ObservableCollection<Package> Packages
     {
@@ -84,22 +89,49 @@ public class PackageRegistryViewModel : ViewModelBase
         set => SetProperty(ref _downloadFileName, value);
     }
 
+    public bool IsUploading
+    {
+        get => _isUploading;
+        set => SetProperty(ref _isUploading, value);
+    }
+
+    public double UploadProgress
+    {
+        get => _uploadProgress;
+        set => SetProperty(ref _uploadProgress, value);
+    }
+
+    public string UploadFileName
+    {
+        get => _uploadFileName;
+        set => SetProperty(ref _uploadFileName, value);
+    }
+
     public IRelayCommand LoadRepositoryCommand { get; }
     public IRelayCommand<Package> DownloadPackageCommand { get; }
     public IRelayCommand CancelDownloadCommand { get; }
     public IRelayCommand RefreshCommand { get; }
+    public IRelayCommand UploadPackageCommand { get; }
+    public IRelayCommand CancelUploadCommand { get; }
 
-    public PackageRegistryViewModel()
+    public PackageRegistryViewModel(IFilePickerService? filePickerService = null)
     {
+        _filePickerService = filePickerService;
         LoadRepositoryCommand = new AsyncRelayCommand(LoadRepositoryAsync);
         DownloadPackageCommand = new AsyncRelayCommand<Package>(DownloadPackageAsync);
         CancelDownloadCommand = new RelayCommand(CancelDownload);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        UploadPackageCommand = new AsyncRelayCommand(UploadPackageAsync);
+        CancelUploadCommand = new RelayCommand(CancelUpload);
     }
 
-    public void Initialize(IGitLabApiService gitLabService)
+    public void Initialize(IGitLabApiService gitLabService, IFilePickerService? filePickerService = null)
     {
         _gitLabService = gitLabService;
+        if (filePickerService != null)
+        {
+            _filePickerService = filePickerService;
+        }
         LoadingMessage = "Package Registry Ready";
     }
 
@@ -328,8 +360,6 @@ public class PackageRegistryViewModel : ViewModelBase
         return $"{len:0.##} {sizes[order]}";
     }
 
-    // ...existing code...
-
     private async Task LoadRepositoryAsync()
     {
         Console.WriteLine($"[ViewModel] LoadRepositoryAsync called - RepositoryPath: '{RepositoryPath}'");
@@ -430,5 +460,143 @@ public class PackageRegistryViewModel : ViewModelBase
     {
         Console.WriteLine($"[ViewModel] RefreshAsync - Refreshing package list");
         await LoadRepositoryAsync();
+    }
+
+    private async Task UploadPackageAsync()
+    {
+        if (SelectedProject == null)
+        {
+            LoadingMessage = "Please load a repository first";
+            return;
+        }
+
+        if (_gitLabService == null)
+        {
+            LoadingMessage = "API service not initialized";
+            return;
+        }
+
+        if (IsUploading)
+        {
+            LoadingMessage = "An upload is already in progress";
+            return;
+        }
+
+        Console.WriteLine($"[ViewModel] UploadPackageAsync - Starting upload process");
+
+        try
+        {
+            // Prompt user to select a file
+            string? selectedFilePath = null;
+
+            if (_filePickerService != null)
+            {
+                selectedFilePath = await _filePickerService.PickFileAsync("Select a file to upload to Package Registry");
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedFilePath))
+            {
+                LoadingMessage = "No file selected";
+                Console.WriteLine($"[ViewModel] UploadPackageAsync - User cancelled file selection");
+                return;
+            }
+
+            if (!File.Exists(selectedFilePath))
+            {
+                LoadingMessage = $"File not found: {selectedFilePath}";
+                Console.WriteLine($"[ViewModel] UploadPackageAsync - File not found: {selectedFilePath}");
+                return;
+            }
+
+            var fileInfo = new FileInfo(selectedFilePath);
+            string fileName = Path.GetFileName(selectedFilePath);
+
+            Console.WriteLine($"[ViewModel] UploadPackageAsync - File selected: {fileName}");
+            Console.WriteLine($"[ViewModel] UploadPackageAsync - File size: {FormatBytes(fileInfo.Length)}");
+            Console.WriteLine($"[ViewModel] UploadPackageAsync - Project: {SelectedProject.Name} (ID: {SelectedProject.Id})");
+
+            IsUploading = true;
+            UploadProgress = 0;
+            UploadFileName = fileName;
+            _uploadCancellationToken = new CancellationTokenSource();
+            LoadingMessage = $"Uploading {fileName} ({FormatBytes(fileInfo.Length)})...";
+
+            // Create progress reporter
+            var progress = new Progress<(long BytesRead, long TotalBytes)>(tuple =>
+            {
+                var (bytesRead, totalBytes) = tuple;
+                int percentComplete = totalBytes > 0 ? (int)((bytesRead * 100) / totalBytes) : 0;
+                UploadProgress = percentComplete;
+                LoadingMessage = $"Uploading {fileName}: {percentComplete}% ({FormatBytes(bytesRead)}/{FormatBytes(totalBytes)})";
+                Console.WriteLine($"[ViewModel] UploadPackageAsync - Progress: {percentComplete}% ({FormatBytes(bytesRead)}/{FormatBytes(totalBytes)})");
+            });
+
+            // Extract package name and version from filename
+            // Expected format: packagename-1.0.0.ext or packagename_1.0.0.ext
+            string packageName = Path.GetFileNameWithoutExtension(fileName);
+            string packageVersion = "1.0.0";
+
+            // Try to extract version from filename
+            var versionMatch = System.Text.RegularExpressions.Regex.Match(packageName, @"(.*?)[-_](\d+\.\d+(?:\.\d+)?)$");
+            if (versionMatch.Success)
+            {
+                packageName = versionMatch.Groups[1].Value;
+                packageVersion = versionMatch.Groups[2].Value;
+            }
+
+            Console.WriteLine($"[ViewModel] UploadPackageAsync - Package name: {packageName}, Version: {packageVersion}");
+
+            // Call the API to upload
+            bool success = await _gitLabService.UploadPackageFileAsync(
+                SelectedProject.Id,
+                selectedFilePath,
+                packageName,
+                packageVersion,
+                "generic",
+                progress
+            );
+
+            if (success && !_uploadCancellationToken.Token.IsCancellationRequested)
+            {
+                Console.WriteLine($"[ViewModel] UploadPackageAsync - Upload completed successfully");
+                LoadingMessage = $"✓ Successfully uploaded {fileName}!";
+                
+                // Refresh the package list
+                await Task.Delay(1500);
+                await LoadRepositoryAsync();
+            }
+            else if (_uploadCancellationToken.Token.IsCancellationRequested)
+            {
+                LoadingMessage = "Upload cancelled";
+                Console.WriteLine($"[ViewModel] UploadPackageAsync - Upload was cancelled");
+            }
+            else
+            {
+                Console.WriteLine($"[ViewModel] UploadPackageAsync - Upload failed");
+                LoadingMessage = $"❌ Upload failed for {fileName}. Check the logs for details.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] UploadPackageAsync - ERROR: {ex.Message}");
+            Console.WriteLine($"[ViewModel] UploadPackageAsync - Stack trace: {ex.StackTrace}");
+            LoadingMessage = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            IsUploading = false;
+            UploadProgress = 0;
+            _uploadCancellationToken?.Dispose();
+            _uploadCancellationToken = null;
+        }
+    }
+
+    private void CancelUpload()
+    {
+        if (_uploadCancellationToken != null && !_uploadCancellationToken.Token.IsCancellationRequested)
+        {
+            Console.WriteLine($"[ViewModel] CancelUpload - Cancelling upload");
+            _uploadCancellationToken.Cancel();
+        }
     }
 }

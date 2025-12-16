@@ -84,6 +84,11 @@ public interface IGitLabApiService
     /// Uploads a file to the Container Registry as a blob
     /// </summary>
     Task<bool> UploadContainerImageAsync(int projectId, string filePath, string fileName, IProgress<(long BytesRead, long TotalBytes)>? progress = null);
+
+    /// <summary>
+    /// Uploads a file to the Package Registry
+    /// </summary>
+    Task<bool> UploadPackageFileAsync(int projectId, string filePath, string packageName, string packageVersion, string packageType = "generic", IProgress<(long BytesRead, long TotalBytes)>? progress = null);
 }
 
 public class GitLabApiService : IGitLabApiService
@@ -715,6 +720,65 @@ Use 'docker pull {tag.Location}' to pull this image.";
         catch (Exception ex)
         {
             Console.WriteLine($"[API] UploadAsPackageAsync - ERROR: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<bool> UploadPackageFileAsync(int projectId, string filePath, string packageName, string packageVersion, string packageType = "generic", IProgress<(long BytesRead, long TotalBytes)>? progress = null)
+    {
+        try
+        {
+            if (!System.IO.File.Exists(filePath))
+            {
+                Console.WriteLine($"[API] UploadPackageFileAsync - File not found: {filePath}");
+                return false;
+            }
+
+            var fileInfo = new System.IO.FileInfo(filePath);
+            Console.WriteLine($"[API] UploadPackageFileAsync - Uploading package file");
+            Console.WriteLine($"[API] File: {System.IO.Path.GetFileName(filePath)} ({FormatBytes(fileInfo.Length)})");
+            Console.WriteLine($"[API] Project ID: {projectId}");
+            Console.WriteLine($"[API] Package: {packageName} v{packageVersion} (Type: {packageType})");
+
+            // Use Package Registry API with package name and version
+            string uploadUrl = $"{_gitlabUrl}/api/v4/projects/{projectId}/packages/generic/{Uri.EscapeDataString(packageName)}/{Uri.EscapeDataString(packageVersion)}/{Uri.EscapeDataString(System.IO.Path.GetFileName(filePath))}";
+            
+            Console.WriteLine($"[API] Upload URL: {uploadUrl}");
+
+            using (var fileStream = System.IO.File.OpenRead(filePath))
+            using (var progressStream = new ProgressStream(fileStream, fileInfo.Length, progress))
+            using (var content = new StreamContent(progressStream))
+            {
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                
+                var request = new HttpRequestMessage(HttpMethod.Put, uploadUrl)
+                {
+                    Content = content
+                };
+
+                Console.WriteLine($"[API] UploadPackageFileAsync - Sending PUT request...");
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+                Console.WriteLine($"[API] UploadPackageFileAsync - Response status: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.Created)
+                {
+                    Console.WriteLine($"[API] UploadPackageFileAsync - Upload completed successfully");
+                    return true;
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[API] UploadPackageFileAsync - Upload failed: {response.StatusCode}");
+                    Console.WriteLine($"[API] Error response: {errorContent}");
+                    return false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] UploadPackageFileAsync - ERROR: {ex.Message}");
             Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
             return false;
         }
