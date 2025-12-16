@@ -134,8 +134,8 @@ public class PackageRegistryViewModel : ViewModelBase
             string fileName = $"{package.Name}_{package.Version}.zip";
             string filePath = Path.Combine(downloadDir, fileName);
 
-            // Simulate downloading by creating a file with progress updates
-            await SimulatePackageDownloadAsync(filePath, package, _downloadCancellationToken.Token);
+            // Download the package file from GitLab
+            await DownloadPackageFileAsync(filePath, package, _downloadCancellationToken.Token);
 
             if (!_downloadCancellationToken.Token.IsCancellationRequested)
             {
@@ -202,7 +202,7 @@ public class PackageRegistryViewModel : ViewModelBase
         }
     }
 
-    private async Task SimulatePackageDownloadAsync(string filePath, Package package, CancellationToken cancellationToken)
+    private async Task DownloadPackageFileAsync(string filePath, Package package, CancellationToken cancellationToken)
     {
         try
         {
@@ -211,22 +211,22 @@ public class PackageRegistryViewModel : ViewModelBase
                 throw new InvalidOperationException("No project selected");
             }
 
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Starting real download for package: {package.Name} (ID: {package.Id})");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Starting download for package: {package.Name} (ID: {package.Id})");
             
             // Get package files list first to get the file ID
             string filesListUrl = $"https://gitlab.com/api/v4/projects/{SelectedProject.Id}/packages/{package.Id}/package_files";
             
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Fetching package files from: {filesListUrl}");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Fetching package files from: {filesListUrl}");
             
             var packageFilesResponse = await _httpClient.GetAsync(filesListUrl);
             if (!packageFilesResponse.IsSuccessStatusCode)
             {
-                Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Could not get package files list: {packageFilesResponse.StatusCode}");
+                Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Could not get package files list: {packageFilesResponse.StatusCode}");
                 throw new Exception($"Failed to get package files: {packageFilesResponse.StatusCode}");
             }
 
             var filesJson = await packageFilesResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Package files response: {filesJson.Substring(0, Math.Min(200, filesJson.Length))}");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Package files response: {filesJson.Substring(0, Math.Min(200, filesJson.Length))}");
 
             // Parse JSON to get first file ID
             using (var jsonDoc = System.Text.Json.JsonDocument.Parse(filesJson))
@@ -242,25 +242,25 @@ public class PackageRegistryViewModel : ViewModelBase
                 string fileName = firstFile.GetProperty("file_name").GetString() ?? "unknown";
                 long fileSize = firstFile.GetProperty("size").GetInt64();
                 
-                Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Found file: {fileName} (ID: {fileId}, Size: {FormatBytes(fileSize)})");
+                Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Found file: {fileName} (ID: {fileId}, Size: {FormatBytes(fileSize)})");
 
                 // Use the correct download endpoint for package files
                 string fileDownloadUrl = $"https://gitlab.com/api/v4/projects/{SelectedProject.Id}/packages/{package.Id}/package_files/{fileId}/download";
                 
-                Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Attempting download from: {fileDownloadUrl}");
+                Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Attempting download from: {fileDownloadUrl}");
                 
                 using (var downloadResponse = await _httpClient.GetAsync(fileDownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
                 {
                     if (!downloadResponse.IsSuccessStatusCode)
                     {
-                        Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Download failed: {downloadResponse.StatusCode}");
+                        Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Download failed: {downloadResponse.StatusCode}");
                         var errorBody = await downloadResponse.Content.ReadAsStringAsync();
-                        Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Error response: {errorBody}");
+                        Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Error response: {errorBody}");
                         throw new Exception($"Download failed: {downloadResponse.StatusCode}");
                     }
 
                     long? contentLength = downloadResponse.Content.Headers.ContentLength;
-                    Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - File size from response: {(contentLength.HasValue ? FormatBytes(contentLength.Value) : "Unknown")}");
+                    Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - File size from response: {(contentLength.HasValue ? FormatBytes(contentLength.Value) : "Unknown")}");
 
                     using (var contentStream = await downloadResponse.Content.ReadAsStreamAsync())
                     using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
@@ -284,24 +284,24 @@ public class PackageRegistryViewModel : ViewModelBase
                                 LoadingMessage = $"Downloading {package.Name}... {FormatBytes(totalBytesRead)} downloaded";
                             }
 
-                            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Downloaded {FormatBytes(totalBytesRead)}");
+                            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Downloaded {FormatBytes(totalBytesRead)}");
                         }
                     }
                 }
             }
 
             DownloadProgress = 100;
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Download completed successfully");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Download completed successfully");
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Download cancelled by user");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Download cancelled by user");
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - ERROR during download: {ex.Message}");
-            Console.WriteLine($"[ViewModel] SimulatePackageDownloadAsync - Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - ERROR during download: {ex.Message}");
+            Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Stack trace: {ex.StackTrace}");
             throw;
         }
     }
