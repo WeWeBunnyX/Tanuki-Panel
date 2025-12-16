@@ -5,6 +5,8 @@ using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using TanukiPanel.Models;
 using TanukiPanel.ViewModels;
 using TanukiPanel.Services;
@@ -143,7 +145,7 @@ public class ContainerRegistryView : UserControl
             Background = new SolidColorBrush(gnomeBlue),
             Foreground = Brushes.White
         };
-        uploadBtn.Bind(Button.CommandProperty, new Binding("SelectFileCommand"));
+        uploadBtn.Click += async (s, e) => await SelectFileButtonClick();
         uploadBtnRow.Children.Add(uploadBtn);
 
         var uploadConfirmBtn = new Button
@@ -160,13 +162,17 @@ public class ContainerRegistryView : UserControl
 
         uploadStack.Children.Add(uploadBtnRow);
 
-        uploadStack.Children.Add(new TextBlock
+        var selectedFileBlock = new TextBlock
         {
-            Text = "Selected: (no file selected)",
             FontSize = 10,
             Foreground = new SolidColorBrush(gnomeSubtext),
             TextAlignment = TextAlignment.Center
+        };
+        selectedFileBlock.Bind(TextBlock.TextProperty, new Binding("SelectedFileName")
+        {
+            StringFormat = "Selected: {0}"
         });
+        uploadStack.Children.Add(selectedFileBlock);
         uploadStack.Children.Add(new TextBlock());  // Spacer
 
         uploadSection.Child = uploadStack;
@@ -411,6 +417,45 @@ public class ContainerRegistryView : UserControl
                 Margin = new Thickness(0, 0, 0, 8)
             };
         });
+    }
+
+    private async Task SelectFileButtonClick()
+    {
+        try
+        {
+            if (DataContext is not ContainerRegistryViewModel vm)
+                return;
+
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null)
+            {
+                Console.WriteLine("[View] SelectFileButtonClick - Could not get TopLevel");
+                return;
+            }
+
+            Console.WriteLine("[View] SelectFileButtonClick - Opening file picker");
+            
+            var filePickerService = new FilePickerService(topLevel);
+            string? selectedPath = await filePickerService.PickFileAsync("Select Container Image File");
+            
+            if (!string.IsNullOrEmpty(selectedPath))
+            {
+                vm.SelectedFilePath = selectedPath;
+                vm.SelectedFileName = Path.GetFileName(selectedPath);
+                var fileInfo = new FileInfo(selectedPath);
+                vm.LoadingMessage = $"Selected: {vm.SelectedFileName} ({FormatBytes(fileInfo.Length)})";
+                
+                Console.WriteLine($"[View] SelectFileButtonClick - File selected: {vm.SelectedFileName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[View] SelectFileButtonClick - ERROR: {ex.Message}");
+            if (DataContext is ContainerRegistryViewModel vm2)
+            {
+                vm2.LoadingMessage = $"File picker error: {ex.Message}";
+            }
+        }
     }
 
     private IDataTemplate CreateTagTemplate(Color textColor, Color subtextColor, Color surfaceColor, Color borderColor)

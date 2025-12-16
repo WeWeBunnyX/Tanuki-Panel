@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using TanukiPanel.Models;
@@ -21,6 +23,8 @@ public class ContainerRegistryViewModel : ViewModelBase
     private RegistryRepository? _selectedRegistry;
     private string _tagLogs = "";
     private bool _showLogs = false;
+    private string _selectedFilePath = "";
+    private string _selectedFileName = "";
 
     public ObservableCollection<RegistryRepository> Registries
     {
@@ -91,10 +95,23 @@ public class ContainerRegistryViewModel : ViewModelBase
         set => SetProperty(ref _showLogs, value);
     }
 
+    public string SelectedFilePath
+    {
+        get => _selectedFilePath;
+        set => SetProperty(ref _selectedFilePath, value);
+    }
+
+    public string SelectedFileName
+    {
+        get => _selectedFileName;
+        set => SetProperty(ref _selectedFileName, value);
+    }
+
     public IRelayCommand LoadRepositoryCommand { get; }
     public IRelayCommand<RegistryTag> ViewTagLogsCommand { get; }
     public IRelayCommand<RegistryTag> DeleteTagCommand { get; }
     public IRelayCommand RefreshCommand { get; }
+    public IRelayCommand UploadFileCommand { get; }
 
     public ContainerRegistryViewModel()
     {
@@ -102,6 +119,7 @@ public class ContainerRegistryViewModel : ViewModelBase
         ViewTagLogsCommand = new AsyncRelayCommand<RegistryTag>(ViewTagLogsAsync);
         DeleteTagCommand = new AsyncRelayCommand<RegistryTag>(DeleteTagAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        UploadFileCommand = new AsyncRelayCommand(UploadFileAsync);
     }
 
     public void Initialize(IGitLabApiService gitLabService)
@@ -343,5 +361,97 @@ public class ContainerRegistryViewModel : ViewModelBase
         {
             await LoadRegistryTagsAsync();
         }
+    }
+
+    private async Task UploadFileAsync()
+    {
+        if (SelectedProject == null)
+        {
+            LoadingMessage = "Please load a repository first";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedFilePath))
+        {
+            LoadingMessage = "Please select a file first";
+            return;
+        }
+
+        if (!File.Exists(SelectedFilePath))
+        {
+            LoadingMessage = $"File not found: {SelectedFilePath}";
+            return;
+        }
+
+        if (_gitLabService == null)
+        {
+            LoadingMessage = "API service not initialized";
+            return;
+        }
+
+        IsLoading = true;
+        Console.WriteLine($"[ViewModel] UploadFileAsync - Starting upload for file: {SelectedFilePath}");
+        Console.WriteLine($"[ViewModel] UploadFileAsync - Project: {SelectedProject.Name} (ID: {SelectedProject.Id})");
+        Console.WriteLine($"[ViewModel] UploadFileAsync - File name: {SelectedFileName}");
+
+        try
+        {
+            var fileInfo = new FileInfo(SelectedFilePath);
+            Console.WriteLine($"[ViewModel] UploadFileAsync - File size: {FormatBytes(fileInfo.Length)}");
+            
+            LoadingMessage = $"Uploading {SelectedFileName} ({FormatBytes(fileInfo.Length)})...";
+
+            // Create progress reporter
+            var progress = new Progress<(long BytesRead, long TotalBytes)>(tuple =>
+            {
+                var (bytesRead, totalBytes) = tuple;
+                int percentComplete = totalBytes > 0 ? (int)((bytesRead * 100) / totalBytes) : 0;
+                LoadingMessage = $"Uploading {SelectedFileName}: {percentComplete}% ({FormatBytes(bytesRead)}/{FormatBytes(totalBytes)})";
+                Console.WriteLine($"[ViewModel] UploadFileAsync - Progress: {percentComplete}% ({FormatBytes(bytesRead)}/{FormatBytes(totalBytes)})");
+            });
+
+            // Call the actual API to upload
+            bool success = await _gitLabService.UploadContainerImageAsync(SelectedProject.Id, SelectedFilePath, SelectedFileName, progress);
+            
+            if (success)
+            {
+                Console.WriteLine($"[ViewModel] UploadFileAsync - Upload completed successfully");
+                LoadingMessage = $"✅ Successfully uploaded {SelectedFileName}!";
+                
+                // Clear selected file after successful upload
+                await Task.Delay(2000);
+                SelectedFilePath = "";
+                SelectedFileName = "(no file selected)";
+                LoadingMessage = "Upload complete. Select another file to continue.";
+            }
+            else
+            {
+                Console.WriteLine($"[ViewModel] UploadFileAsync - Upload failed");
+                LoadingMessage = $"❌ Upload failed for {SelectedFileName}. Check the logs for details.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] UploadFileAsync - ERROR: {ex.Message}");
+            Console.WriteLine($"[ViewModel] UploadFileAsync - Stack trace: {ex.StackTrace}");
+            LoadingMessage = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
     }
 }

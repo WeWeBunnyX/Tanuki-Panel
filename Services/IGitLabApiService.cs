@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using TanukiPanel.Models;
 
@@ -77,6 +79,11 @@ public interface IGitLabApiService
     /// Fetches the logs for a specific registry tag (if available)
     /// </summary>
     Task<string> GetRegistryTagLogsAsync(int projectId, int repositoryId, string tagName);
+
+    /// <summary>
+    /// Uploads a file to the Container Registry as a blob
+    /// </summary>
+    Task<bool> UploadContainerImageAsync(int projectId, string filePath, string fileName, IProgress<(long BytesRead, long TotalBytes)>? progress = null);
 }
 
 public class GitLabApiService : IGitLabApiService
@@ -579,4 +586,182 @@ Use 'docker pull {tag.Location}' to pull this image.";
         }
         return $"{len:0.##} {sizes[order]}";
     }
+
+    public async Task<bool> UploadContainerImageAsync(int projectId, string filePath, string fileName, IProgress<(long BytesRead, long TotalBytes)>? progress = null)
+    {
+        try
+        {
+            if (!System.IO.File.Exists(filePath))
+            {
+                Console.WriteLine($"[API] UploadContainerImageAsync - File not found: {filePath}");
+                return false;
+            }
+
+            var fileInfo = new System.IO.FileInfo(filePath);
+            Console.WriteLine($"[API] UploadContainerImageAsync - Uploading container image");
+            Console.WriteLine($"[API] File: {fileName} ({FormatBytes(fileInfo.Length)})");
+            Console.WriteLine($"[API] Project ID: {projectId}");
+
+            // Try different GitLab endpoints that might accept file uploads
+            // First, try the generic file upload endpoint
+            string uploadUrl = $"{_gitlabUrl}/api/v4/projects/{projectId}/repository/files/{Uri.EscapeDataString("container-" + fileName)}";
+            
+            Console.WriteLine($"[API] Upload URL: {uploadUrl}");
+
+            using (var fileStream = System.IO.File.OpenRead(filePath))
+            using (var progressStream = new ProgressStream(fileStream, fileInfo.Length, progress))
+            using (var content = new StreamContent(progressStream))
+            {
+                // Use raw binary upload for generic file endpoint
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                
+                // Prepare the request with base64 encoded content
+                var fileBytes = System.IO.File.ReadAllBytes(filePath);
+                var base64Content = Convert.ToBase64String(fileBytes);
+                
+                var requestBody = new
+                {
+                    branch = "main",
+                    content = base64Content,
+                    commit_message = $"Add container image: {fileName}"
+                };
+
+                var jsonContent = new StringContent(
+                    JsonSerializer.Serialize(requestBody),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                );
+
+                var request = new HttpRequestMessage(HttpMethod.Post, uploadUrl)
+                {
+                    Content = jsonContent
+                };
+
+                Console.WriteLine($"[API] UploadContainerImageAsync - Sending request to repository files endpoint...");
+                var response = await _httpClient.SendAsync(request);
+
+                Console.WriteLine($"[API] UploadContainerImageAsync - Response status: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.Created)
+                {
+                    Console.WriteLine($"[API] UploadContainerImageAsync - Upload completed successfully");
+                    return true;
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // Try Package Registry upload as fallback
+                    Console.WriteLine($"[API] UploadContainerImageAsync - Repository files endpoint not found, trying package registry...");
+                    return await UploadAsPackageAsync(projectId, filePath, fileName, progress);
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[API] UploadContainerImageAsync - Upload failed: {response.StatusCode}");
+                    Console.WriteLine($"[API] Error response: {errorContent}");
+                    return false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] UploadContainerImageAsync - ERROR: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
+
+    private async Task<bool> UploadAsPackageAsync(int projectId, string filePath, string fileName, IProgress<(long BytesRead, long TotalBytes)>? progress = null)
+    {
+        try
+        {
+            var fileInfo = new System.IO.FileInfo(filePath);
+            
+            // Use Package Registry API - this is more reliable for file uploads
+            string uploadUrl = $"{_gitlabUrl}/api/v4/projects/{projectId}/packages/generic/container-images/latest/{Uri.EscapeDataString(fileName)}";
+            
+            Console.WriteLine($"[API] UploadAsPackageAsync - Using Package Registry endpoint");
+            Console.WriteLine($"[API] Upload URL: {uploadUrl}");
+
+            using (var fileStream = System.IO.File.OpenRead(filePath))
+            using (var progressStream = new ProgressStream(fileStream, fileInfo.Length, progress))
+            using (var content = new StreamContent(progressStream))
+            {
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                
+                var request = new HttpRequestMessage(HttpMethod.Put, uploadUrl)
+                {
+                    Content = content
+                };
+
+                Console.WriteLine($"[API] UploadAsPackageAsync - Sending PUT request...");
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+                Console.WriteLine($"[API] UploadAsPackageAsync - Response status: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.Created)
+                {
+                    Console.WriteLine($"[API] UploadAsPackageAsync - Upload completed successfully");
+                    return true;
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[API] UploadAsPackageAsync - Upload failed: {response.StatusCode}");
+                    Console.WriteLine($"[API] Error response: {errorContent}");
+                    return false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] UploadAsPackageAsync - ERROR: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// Helper class to track upload progress
+/// </summary>
+public class ProgressStream : System.IO.Stream
+{
+    private readonly System.IO.Stream _innerStream;
+    private readonly long _totalLength;
+    private readonly IProgress<(long BytesRead, long TotalBytes)>? _progress;
+    private long _bytesRead = 0;
+
+    public ProgressStream(System.IO.Stream innerStream, long totalLength, IProgress<(long BytesRead, long TotalBytes)>? progress = null)
+    {
+        _innerStream = innerStream;
+        _totalLength = totalLength;
+        _progress = progress;
+    }
+
+    public override void Flush() => _innerStream.Flush();
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        int bytesRead = _innerStream.Read(buffer, offset, count);
+        _bytesRead += bytesRead;
+        _progress?.Report((_bytesRead, _totalLength));
+        return bytesRead;
+    }
+
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        int bytesRead = await _innerStream.ReadAsync(buffer, offset, count, cancellationToken);
+        _bytesRead += bytesRead;
+        _progress?.Report((_bytesRead, _totalLength));
+        return bytesRead;
+    }
+
+    public override long Seek(long offset, System.IO.SeekOrigin origin) => _innerStream.Seek(offset, origin);
+    public override void SetLength(long value) => _innerStream.SetLength(value);
+    public override void Write(byte[] buffer, int offset, int count) => _innerStream.Write(buffer, offset, count);
+
+    public override bool CanRead => _innerStream.CanRead;
+    public override bool CanSeek => _innerStream.CanSeek;
+    public override bool CanWrite => _innerStream.CanWrite;
+    public override long Length => _innerStream.Length;
+    public override long Position { get => _innerStream.Position; set => _innerStream.Position = value; }
 }
