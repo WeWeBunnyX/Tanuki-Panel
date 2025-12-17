@@ -18,9 +18,15 @@ public class ApiKeyGuideViewModel : ViewModelBase
 
     private void GoBack()
     {
+        Console.WriteLine($"[ApiKeyGuideViewModel] GoBack called. CanGoBack: {_navigationService.CanGoBack}");
         if (_navigationService.CanGoBack)
         {
+            Console.WriteLine("[ApiKeyGuideViewModel] Calling NavigationService.GoBack()");
             _navigationService.GoBack();
+        }
+        else
+        {
+            Console.WriteLine("[ApiKeyGuideViewModel] ERROR: Cannot go back!");
         }
     }
 }

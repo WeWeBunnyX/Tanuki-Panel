@@ -43,9 +43,17 @@ public class ApiKeyGuideView : UserControl
         // Bind the back button to the command
         backButton.Click += (s, e) =>
         {
-            if (DataContext is ViewModels.ApiKeyGuideViewModel vm)
+            Console.WriteLine($"[Back Button] Click detected. DataContext type: {this.DataContext?.GetType().Name}");
+            
+            var vm = this.DataContext as ViewModels.ApiKeyGuideViewModel;
+            if (vm != null)
             {
+                Console.WriteLine("[Back Button] ViewModel found, executing GoBackCommand");
                 vm.GoBackCommand.Execute(null);
+            }
+            else
+            {
+                Console.WriteLine("[Back Button] ERROR: ViewModel is null!");
             }
         };
 

@@ -23,22 +23,38 @@ public class NavigationService : INavigationService
 
     public void Navigate(ViewModelBase viewModel)
     {
+        Console.WriteLine($"[NavigationService] Navigate called. Current: {_currentViewModel?.GetType().Name}, New: {viewModel.GetType().Name}");
+        
+        // Update _currentViewModel from MainWindowViewModel first (in case it was set externally)
+        if (_mainWindowViewModel.CurrentViewModel != null)
+        {
+            _currentViewModel = _mainWindowViewModel.CurrentViewModel;
+        }
+        
         // Only add to history if we're navigating away from the current view
         if (_currentViewModel != null && _currentViewModel != viewModel)
         {
+            Console.WriteLine($"[NavigationService] Pushing {_currentViewModel.GetType().Name} to history");
             _navigationHistory.Push(_currentViewModel);
         }
         
         _currentViewModel = viewModel;
         _mainWindowViewModel.CurrentViewModel = viewModel;
+        Console.WriteLine($"[NavigationService] History count after navigate: {_navigationHistory.Count}");
     }
     
     public void GoBack()
     {
+        Console.WriteLine($"[NavigationService] GoBack called. History count: {_navigationHistory.Count}");
         if (_navigationHistory.Count > 0)
         {
             _currentViewModel = _navigationHistory.Pop();
             _mainWindowViewModel.CurrentViewModel = _currentViewModel;
+            Console.WriteLine($"[NavigationService] Navigated back to {_currentViewModel?.GetType().Name}");
+        }
+        else
+        {
+            Console.WriteLine("[NavigationService] ERROR: No history to go back to!");
         }
     }
 
