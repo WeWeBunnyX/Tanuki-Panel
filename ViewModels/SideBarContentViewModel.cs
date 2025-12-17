@@ -72,7 +72,7 @@ public class SideBarContentViewModel : ViewModelBase
                 var commitVM = new CommitViewModel();
                 commitVM.Initialize(_gitLabService!);
                 CurrentViewModel = commitVM;
-                Title = "📝 Commit Viewer";
+                Title = "◎ Commit Viewer";
                 break;
             case "Option5": 
                 CurrentViewModel = new Option5ViewModel();

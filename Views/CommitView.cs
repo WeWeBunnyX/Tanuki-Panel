@@ -44,7 +44,7 @@ public class CommitView : UserControl
         // Header
         controlsSection.Children.Add(new TextBlock
         {
-            Text = "📝 Commit Viewer",
+            Text = "◎ Commit Viewer",
             FontSize = 24,
             FontWeight = FontWeight.Bold,
             Foreground = new SolidColorBrush(gnomeText),
@@ -119,18 +119,17 @@ public class CommitView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         });
 
-        var startDateBox = new TextBox
+        var startDatePicker = new CalendarDatePicker
         {
-            Width = 120,
+            Width = 150,
             Padding = new Thickness(8, 8),
-            FontSize = 11,
             CornerRadius = new CornerRadius(4),
             Background = new SolidColorBrush(gnomeSurface),
             BorderBrush = new SolidColorBrush(gnomeBorder),
             BorderThickness = new Thickness(1)
         };
-        startDateBox.Bind(TextBox.TextProperty, new Binding("StartDate") { StringFormat = "yyyy-MM-dd", Mode = BindingMode.TwoWay });
-        dateInputRow.Children.Add(startDateBox);
+        startDatePicker.Bind(CalendarDatePicker.SelectedDateProperty, new Binding("StartDate") { Mode = BindingMode.TwoWay });
+        dateInputRow.Children.Add(startDatePicker);
 
         dateInputRow.Children.Add(new TextBlock
         {
@@ -140,18 +139,17 @@ public class CommitView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         });
 
-        var endDateBox = new TextBox
+        var endDatePicker = new CalendarDatePicker
         {
-            Width = 120,
+            Width = 150,
             Padding = new Thickness(8, 8),
-            FontSize = 11,
             CornerRadius = new CornerRadius(4),
             Background = new SolidColorBrush(gnomeSurface),
             BorderBrush = new SolidColorBrush(gnomeBorder),
             BorderThickness = new Thickness(1)
         };
-        endDateBox.Bind(TextBox.TextProperty, new Binding("EndDate") { StringFormat = "yyyy-MM-dd", Mode = BindingMode.TwoWay });
-        dateInputRow.Children.Add(endDateBox);
+        endDatePicker.Bind(CalendarDatePicker.SelectedDateProperty, new Binding("EndDate") { Mode = BindingMode.TwoWay });
+        dateInputRow.Children.Add(endDatePicker);
 
         var fetchBtn = new Button
         {

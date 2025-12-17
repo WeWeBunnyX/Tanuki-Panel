@@ -63,7 +63,7 @@ public class SideBarContentView : UserControl
         {
             ("📊", "Projects", "Projects"),
             ("📦", "Container Registry", "Option2"),            ("📥", "Package Registry", "Option3"),            ("📋", "Issues", "Issues"),
-            ("📝", "Commit Viewer", "Option4"),
+            ("◎", "Commit Viewer", "Option4"),
             ("📈", "Analytics", "Option5")
         };
 
