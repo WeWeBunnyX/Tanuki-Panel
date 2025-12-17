@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.Animation;
@@ -17,6 +18,8 @@ public class WelcomeView : UserControl
     private readonly StackPanel _contentStack;
     private readonly TextBlock _mainText;
     private readonly TextBlock _subtitleText;
+    private readonly TextBlock _linkText;
+    private readonly Button _backButton;
     private readonly TimeSpan _fadeDuration = TimeSpan.FromMilliseconds(800);
 
     public WelcomeView()
@@ -48,6 +51,32 @@ public class WelcomeView : UserControl
             Margin = new Thickness(0, 12, 0, 0)
         };
 
+        _linkText = new TextBlock
+        {
+            Text = "How to find my API key",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 14,
+            Opacity = 0,
+            Foreground = new SolidColorBrush(gnomeBlue),
+            Margin = new Thickness(0, 24, 0, 0),
+            TextDecorations = TextDecorations.Underline,
+            Cursor = new Cursor(StandardCursorType.Hand)
+        };
+
+        _backButton = new Button
+        {
+            Content = "Continue to API Key",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 24, 0, 0),
+            Padding = new Thickness(16, 10, 16, 10),
+            Background = new SolidColorBrush(gnomeBlue),
+            Foreground = new SolidColorBrush(Color.Parse("#FFFFFF")),
+            FontSize = 14,
+            Opacity = 0
+        };
+
         _contentStack = new StackPanel
         {
             Orientation = Orientation.Vertical,
@@ -57,6 +86,8 @@ public class WelcomeView : UserControl
 
         _contentStack.Children.Add(_mainText);
         _contentStack.Children.Add(_subtitleText);
+        _contentStack.Children.Add(_linkText);
+        _contentStack.Children.Add(_backButton);
 
         Content = new Grid
         {
@@ -74,6 +105,34 @@ public class WelcomeView : UserControl
             new DoubleTransition { Property = TextBlock.OpacityProperty, Duration = _fadeDuration }
         };
 
+        _linkText.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = TextBlock.OpacityProperty, Duration = _fadeDuration }
+        };
+
+        _backButton.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = Button.OpacityProperty, Duration = _fadeDuration }
+        };
+
+        // Add click handler to the link
+        _linkText.PointerPressed += (s, e) =>
+        {
+            if (DataContext is ViewModels.WelcomeViewModel vm)
+            {
+                vm.ShowApiKeyGuideCommand.Execute(null);
+            }
+        };
+
+        // Add click handler to the back button
+        _backButton.Click += (s, e) =>
+        {
+            if (DataContext is ViewModels.WelcomeViewModel vm)
+            {
+                vm.OnAnimationFinished();
+            }
+        };
+
         _ = RunSequenceAsync();
     }
 
@@ -84,21 +143,13 @@ public class WelcomeView : UserControl
             await Dispatcher.UIThread.InvokeAsync(() => _mainText.Opacity = 1.0);
             await Task.Delay(200);
             await Dispatcher.UIThread.InvokeAsync(() => _subtitleText.Opacity = 1.0);
-            await Task.Delay(1500);
-            await Dispatcher.UIThread.InvokeAsync(() => 
-            {
-                _mainText.Opacity = 0.0;
-                _subtitleText.Opacity = 0.0;
-            });
-            await Task.Delay(_fadeDuration);
+            await Task.Delay(200);
+            await Dispatcher.UIThread.InvokeAsync(() => _linkText.Opacity = 1.0);
+            await Task.Delay(200);
+            await Dispatcher.UIThread.InvokeAsync(() => _backButton.Opacity = 1.0);
         }
         catch
         {
-        }
-
-        if (DataContext is ViewModels.WelcomeViewModel vm)
-        {
-            vm.OnAnimationFinished();
         }
     }
 }
