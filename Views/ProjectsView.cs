@@ -339,34 +339,28 @@ public class ProjectsView : UserControl
         Grid.SetRow(controls, 0);
         grid.Children.Add(controls);
 
-        // Scrollable list
+        // Scrollable list (Row 1 - fills space)
         var listBox = new ListBox
         {
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
+            Padding = new Thickness(16, 12, 16, 12),
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxHeight = 400
         };
         listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Projects"));
         listBox.ItemTemplate = CreateProjectTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor);
-        
-        var scrollViewer = new ScrollViewer
-        {
-            Content = listBox,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            Margin = new Thickness(16, 12, 16, 12),
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        Grid.SetRow(scrollViewer, 1);
-        grid.Children.Add(scrollViewer);
+        Grid.SetRow(listBox, 1);
+        grid.Children.Add(listBox);
 
-        // Pagination
+        // Pagination (Row 2)
         var pagination = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 12,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(16, 0, 16, 16)
+            Margin = new Thickness(16, 12, 16, 12),
+            VerticalAlignment = VerticalAlignment.Center
         };
 
         var prevBtn = new Button { Content = "← Previous", Padding = new Thickness(16, 8), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(accentColor), Foreground = Brushes.White };
