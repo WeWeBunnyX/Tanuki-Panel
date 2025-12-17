@@ -205,8 +205,9 @@ public class IssuesView : UserControl
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Controls
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // List fills space
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Pagination
 
         var controls = new StackPanel
         {
@@ -275,25 +276,67 @@ public class IssuesView : UserControl
         Grid.SetRow(controls, 0);
         grid.Children.Add(controls);
 
+        // Issues list (Row 1 - fills remaining space) - NO ScrollViewer
         var listBox = new ListBox
         {
             Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxHeight = 400
         };
         listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
         listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
-        
-        var scrollViewer = new ScrollViewer
+        Grid.SetRow(listBox, 1);
+        grid.Children.Add(listBox);
+
+        // Pagination controls (Row 2)
+        var paginationStack = new StackPanel
         {
-            Content = listBox,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(16, 12, 16, 16)
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(0, 12, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetRow(scrollViewer, 1);
-        grid.Children.Add(scrollViewer);
+
+        var prevBtn = new Button
+        {
+            Content = "← Previous",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        prevBtn.Bind(Button.CommandProperty, new Binding("PreviousPageCommand"));
+        prevBtn.Bind(Button.IsEnabledProperty, new Binding("HasPreviousPage"));
+        paginationStack.Children.Add(prevBtn);
+
+        var pageInfoBlock = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = new SolidColorBrush(subtextColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 200
+        };
+        pageInfoBlock.Bind(TextBlock.TextProperty, new Binding("IssuesPageInfo"));
+        paginationStack.Children.Add(pageInfoBlock);
+
+        var nextBtn = new Button
+        {
+            Content = "Next →",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        nextBtn.Bind(Button.CommandProperty, new Binding("NextPageCommand"));
+        nextBtn.Bind(Button.IsEnabledProperty, new Binding("HasNextPage"));
+        paginationStack.Children.Add(nextBtn);
+
+        Grid.SetRow(paginationStack, 2);
+        grid.Children.Add(paginationStack);
 
         return new Border
         {
@@ -387,8 +430,9 @@ public class IssuesView : UserControl
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Controls
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // List fills space
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Pagination
 
         var controls = new StackPanel
         {
@@ -425,25 +469,67 @@ public class IssuesView : UserControl
         Grid.SetRow(controls, 0);
         grid.Children.Add(controls);
 
+        // Issues list (Row 1 - fills remaining space) - NO ScrollViewer
         var listBox = new ListBox
         {
             Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxHeight = 400
         };
         listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
         listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
-        
-        var scrollViewer = new ScrollViewer
+        Grid.SetRow(listBox, 1);
+        grid.Children.Add(listBox);
+
+        // Pagination controls (Row 2)
+        var paginationStack = new StackPanel
         {
-            Content = listBox,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(16, 12, 16, 16)
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(0, 12, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetRow(scrollViewer, 1);
-        grid.Children.Add(scrollViewer);
+
+        var prevBtn = new Button
+        {
+            Content = "← Previous",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        prevBtn.Bind(Button.CommandProperty, new Binding("PreviousPageCommand"));
+        prevBtn.Bind(Button.IsEnabledProperty, new Binding("HasPreviousPage"));
+        paginationStack.Children.Add(prevBtn);
+
+        var pageInfoBlock = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = new SolidColorBrush(subtextColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 200
+        };
+        pageInfoBlock.Bind(TextBlock.TextProperty, new Binding("IssuesPageInfo"));
+        paginationStack.Children.Add(pageInfoBlock);
+
+        var nextBtn = new Button
+        {
+            Content = "Next →",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        nextBtn.Bind(Button.CommandProperty, new Binding("NextPageCommand"));
+        nextBtn.Bind(Button.IsEnabledProperty, new Binding("HasNextPage"));
+        paginationStack.Children.Add(nextBtn);
+
+        Grid.SetRow(paginationStack, 2);
+        grid.Children.Add(paginationStack);
 
         return new Border
         {

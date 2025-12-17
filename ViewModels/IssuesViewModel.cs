@@ -26,6 +26,8 @@ public class IssuesViewModel : ViewModelBase
     private string _searchQuery = "";
     private string _repositoryPath = "";
     private bool _isSearching = false;
+    private int _currentPage = 1;
+    private const int IssuesPerPage = 15;
 
     public ObservableCollection<Issue> Issues
     {
@@ -134,12 +136,24 @@ public class IssuesViewModel : ViewModelBase
         get => _navigationService;
     }
 
+    public int CurrentPage
+    {
+        get => _currentPage;
+        set => SetProperty(ref _currentPage, value);
+    }
+
+    public bool HasPreviousPage => CurrentPage > 1;
+    public bool HasNextPage => CurrentPage * IssuesPerPage < _allIssues.Count;
+    public string IssuesPageInfo => $"Page {CurrentPage} • {Math.Min(IssuesPerPage, _allIssues.Count % IssuesPerPage == 0 ? IssuesPerPage : _allIssues.Count % IssuesPerPage)} of {_allIssues.Count}";
+
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Issue> OpenIssueCommand { get; }
     public IRelayCommand SearchIssuesCommand { get; }
     public IRelayCommand LoadRepositoryIssuesCommand { get; }
     public IRelayCommand<Issue> ToggleIssueStateCommand { get; }
     public IRelayCommand BackCommand { get; }
+    public IRelayCommand NextPageCommand { get; }
+    public IRelayCommand PreviousPageCommand { get; }
 
     public IssuesViewModel()
     {
@@ -149,7 +163,8 @@ public class IssuesViewModel : ViewModelBase
         LoadRepositoryIssuesCommand = new AsyncRelayCommand(LoadRepositoryIssuesAsync);
         ToggleIssueStateCommand = new AsyncRelayCommand<Issue>(ToggleIssueStateAsync);
         BackCommand = new RelayCommand(() => { });
-        BackCommand = new RelayCommand(() => { });
+        NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
+        PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => HasPreviousPage);
     }
 
     public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
@@ -274,8 +289,17 @@ public class IssuesViewModel : ViewModelBase
             _ => filtered.OrderByDescending(i => i.UpdatedAt)
         };
 
+        // Reset to page 1 when filters change
+        CurrentPage = 1;
+
+        // Apply pagination
+        var paginatedIssues = filtered
+            .Skip((CurrentPage - 1) * IssuesPerPage)
+            .Take(IssuesPerPage)
+            .ToList();
+
         Issues.Clear();
-        foreach (var issue in filtered)
+        foreach (var issue in paginatedIssues)
         {
             Issues.Add(issue);
         }
@@ -407,6 +431,24 @@ public class IssuesViewModel : ViewModelBase
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (HasNextPage)
+        {
+            CurrentPage++;
+            ApplyFilters();
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (HasPreviousPage)
+        {
+            CurrentPage--;
+            ApplyFilters();
         }
     }
 }
