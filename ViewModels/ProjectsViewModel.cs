@@ -30,6 +30,8 @@ public class ProjectsViewModel : ViewModelBase
     private int _pageSize = 10;
     private int _totalSearchResults = 0;
     private string _paginationInfo = "";
+    private int _myProjectsPage = 1;
+    private const int MyProjectsPageSize = 15;
 
     public ObservableCollection<Project> Projects
     {
@@ -157,6 +159,16 @@ public class ProjectsViewModel : ViewModelBase
         set => SetProperty(ref _paginationInfo, value);
     }
 
+    public int MyProjectsPage
+    {
+        get => _myProjectsPage;
+        set => SetProperty(ref _myProjectsPage, value);
+    }
+
+    public bool HasPreviousMyPage => MyProjectsPage > 1;
+    public bool HasNextMyPage => MyProjectsPage * MyProjectsPageSize < _allProjects.Count;
+    public string MyProjectsPageInfo => $"Page {MyProjectsPage} • {Math.Min((MyProjectsPage - 1) * MyProjectsPageSize + _projects.Count, _allProjects.Count)} of {_allProjects.Count}";
+
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Project> OpenProjectCommand { get; }
     public IRelayCommand<Project> CopyCloneUrlCommand { get; }
@@ -164,6 +176,8 @@ public class ProjectsViewModel : ViewModelBase
     public IRelayCommand SearchProjectsCommand { get; }
     public IRelayCommand NextPageCommand { get; }
     public IRelayCommand PreviousPageCommand { get; }
+    public IRelayCommand NextMyPageCommand { get; }
+    public IRelayCommand PreviousMyPageCommand { get; }
 
     public ProjectsViewModel()
     {
@@ -174,6 +188,8 @@ public class ProjectsViewModel : ViewModelBase
         SearchProjectsCommand = new AsyncRelayCommand(SearchProjectsAsync);
         NextPageCommand = new AsyncRelayCommand(NextPageAsync);
         PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync);
+        NextMyPageCommand = new AsyncRelayCommand(NextMyPageAsync, () => HasNextMyPage);
+        PreviousMyPageCommand = new AsyncRelayCommand(PreviousMyPageAsync, () => HasPreviousMyPage);
     }
 
     public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
@@ -386,8 +402,17 @@ public class ProjectsViewModel : ViewModelBase
             _ => filtered.OrderByDescending(p => p.LastActivityAt)
         };
 
+        // Reset to page 1 when filters change
+        MyProjectsPage = 1;
+
+        // Apply pagination
+        var paginatedProjects = filtered
+            .Skip((MyProjectsPage - 1) * MyProjectsPageSize)
+            .Take(MyProjectsPageSize)
+            .ToList();
+
         Projects.Clear();
-        foreach (var project in filtered)
+        foreach (var project in paginatedProjects)
         {
             Projects.Add(project);
         }
@@ -499,6 +524,24 @@ public class ProjectsViewModel : ViewModelBase
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to navigate to issues: {ex.Message}");
+        }
+    }
+
+    private async Task NextMyPageAsync()
+    {
+        if (HasNextMyPage)
+        {
+            MyProjectsPage++;
+            ApplyFilters();
+        }
+    }
+
+    private async Task PreviousMyPageAsync()
+    {
+        if (HasPreviousMyPage)
+        {
+            MyProjectsPage--;
+            ApplyFilters();
         }
     }
 }

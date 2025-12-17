@@ -168,7 +168,9 @@ public class PackageRegistryViewModel : ViewModelBase
             string downloadDir = Path.Combine(Path.GetTempPath(), "TanukiPanel_Downloads");
             Directory.CreateDirectory(downloadDir);
 
-            string fileName = $"{package.Name}_{package.Version}.zip";
+            // Get the actual filename from the API
+            string? actualFileName = await GetPackageFileNameAsync(package);
+            string fileName = actualFileName ?? $"{package.Name}_{package.Version}.zip";
             string filePath = Path.Combine(downloadDir, fileName);
 
             // Download the package file from GitLab
@@ -340,6 +342,49 @@ public class PackageRegistryViewModel : ViewModelBase
             Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - ERROR during download: {ex.Message}");
             Console.WriteLine($"[ViewModel] DownloadPackageFileAsync - Stack trace: {ex.StackTrace}");
             throw;
+        }
+    }
+
+    private async Task<string?> GetPackageFileNameAsync(Package package)
+    {
+        try
+        {
+            if (SelectedProject == null)
+            {
+                return null;
+            }
+
+            // Get package files list to extract the actual filename
+            string filesListUrl = $"https://gitlab.com/api/v4/projects/{SelectedProject.Id}/packages/{package.Id}/package_files";
+            
+            var packageFilesResponse = await _httpClient.GetAsync(filesListUrl);
+            if (!packageFilesResponse.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var filesJson = await packageFilesResponse.Content.ReadAsStringAsync();
+            
+            // Parse JSON to get first file name
+            using (var jsonDoc = System.Text.Json.JsonDocument.Parse(filesJson))
+            {
+                var fileArray = jsonDoc.RootElement;
+                if (fileArray.GetArrayLength() == 0)
+                {
+                    return null;
+                }
+                
+                var firstFile = fileArray[0];
+                string? fileName = firstFile.GetProperty("file_name").GetString();
+                
+                Console.WriteLine($"[ViewModel] GetPackageFileNameAsync - Retrieved actual filename: {fileName}");
+                return fileName;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] GetPackageFileNameAsync - Error getting filename: {ex.Message}");
+            return null;
         }
     }
 

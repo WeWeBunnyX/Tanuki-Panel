@@ -190,9 +190,20 @@ public class IssuesView : UserControl
             if (DataContext is IssuesViewModel vm) vm.ViewMode = "SearchRepository";
         };
 
+        // Create overlay dialog for creating issues
+        var dialogOverlay = CreateIssueDialog(gnomeText, gnomeSubtext, gnomeSurface, gnomeBlue, gnomeBorder, gnomeGreen, gnomeRed, gnomeBackground);
+
+        var mainContainer = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        mainContainer.Children.Add(mainGrid);
+        mainContainer.Children.Add(dialogOverlay);
+
         Content = new Border
         {
-            Child = mainGrid,
+            Child = mainContainer,
             Background = new SolidColorBrush(gnomeBackground),
             Padding = new Thickness(24)
         };
@@ -205,8 +216,9 @@ public class IssuesView : UserControl
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Controls
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // List fills space
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Pagination
 
         var controls = new StackPanel
         {
@@ -267,6 +279,10 @@ public class IssuesView : UserControl
         filterRow.Children.Add(sortCombo);
         filterRow.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch });
 
+        var newIssueBtn = new Button { Content = "➕ New Issue", Padding = new Thickness(16, 8), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(successColor), Foreground = Brushes.White, Margin = new Thickness(8, 0, 0, 0) };
+        newIssueBtn.Bind(Button.CommandProperty, new Binding("ShowCreateIssueDialogCommand"));
+        filterRow.Children.Add(newIssueBtn);
+
         var refreshBtn = new Button { Content = "Refresh", Padding = new Thickness(16, 8), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(accentColor), Foreground = Brushes.White };
         refreshBtn.Bind(Button.CommandProperty, new Binding("RefreshCommand"));
         filterRow.Children.Add(refreshBtn);
@@ -275,25 +291,67 @@ public class IssuesView : UserControl
         Grid.SetRow(controls, 0);
         grid.Children.Add(controls);
 
+        // Issues list (Row 1 - fills remaining space) - NO ScrollViewer
         var listBox = new ListBox
         {
             Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxHeight = 400
         };
         listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
         listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
-        
-        var scrollViewer = new ScrollViewer
+        Grid.SetRow(listBox, 1);
+        grid.Children.Add(listBox);
+
+        // Pagination controls (Row 2)
+        var paginationStack = new StackPanel
         {
-            Content = listBox,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(16, 12, 16, 16)
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(0, 12, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetRow(scrollViewer, 1);
-        grid.Children.Add(scrollViewer);
+
+        var prevBtn = new Button
+        {
+            Content = "← Previous",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        prevBtn.Bind(Button.CommandProperty, new Binding("PreviousPageCommand"));
+        prevBtn.Bind(Button.IsEnabledProperty, new Binding("HasPreviousPage"));
+        paginationStack.Children.Add(prevBtn);
+
+        var pageInfoBlock = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = new SolidColorBrush(subtextColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 200
+        };
+        pageInfoBlock.Bind(TextBlock.TextProperty, new Binding("IssuesPageInfo"));
+        paginationStack.Children.Add(pageInfoBlock);
+
+        var nextBtn = new Button
+        {
+            Content = "Next →",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        nextBtn.Bind(Button.CommandProperty, new Binding("NextPageCommand"));
+        nextBtn.Bind(Button.IsEnabledProperty, new Binding("HasNextPage"));
+        paginationStack.Children.Add(nextBtn);
+
+        Grid.SetRow(paginationStack, 2);
+        grid.Children.Add(paginationStack);
 
         return new Border
         {
@@ -387,8 +445,9 @@ public class IssuesView : UserControl
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Controls
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // List fills space
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Pagination
 
         var controls = new StackPanel
         {
@@ -421,29 +480,75 @@ public class IssuesView : UserControl
         };
         searchRow.Children.Add(loadBtn);
 
+        var newIssueBtn = new Button { Content = "➕ New Issue", Padding = new Thickness(16, 10), FontSize = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(successColor), Foreground = Brushes.White, Margin = new Thickness(8, 0, 0, 0) };
+        newIssueBtn.Bind(Button.CommandProperty, new Binding("ShowCreateIssueDialogCommand"));
+        searchRow.Children.Add(newIssueBtn);
+
         controls.Children.Add(searchRow);
         Grid.SetRow(controls, 0);
         grid.Children.Add(controls);
 
+        // Issues list (Row 1 - fills remaining space) - NO ScrollViewer
         var listBox = new ListBox
         {
             Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxHeight = 400
         };
         listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Issues"));
         listBox.ItemTemplate = CreateIssueTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor, successColor, errorColor);
-        
-        var scrollViewer = new ScrollViewer
+        Grid.SetRow(listBox, 1);
+        grid.Children.Add(listBox);
+
+        // Pagination controls (Row 2)
+        var paginationStack = new StackPanel
         {
-            Content = listBox,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(16, 12, 16, 16)
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(0, 12, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        Grid.SetRow(scrollViewer, 1);
-        grid.Children.Add(scrollViewer);
+
+        var prevBtn = new Button
+        {
+            Content = "← Previous",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        prevBtn.Bind(Button.CommandProperty, new Binding("PreviousPageCommand"));
+        prevBtn.Bind(Button.IsEnabledProperty, new Binding("HasPreviousPage"));
+        paginationStack.Children.Add(prevBtn);
+
+        var pageInfoBlock = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = new SolidColorBrush(subtextColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 200
+        };
+        pageInfoBlock.Bind(TextBlock.TextProperty, new Binding("IssuesPageInfo"));
+        paginationStack.Children.Add(pageInfoBlock);
+
+        var nextBtn = new Button
+        {
+            Content = "Next →",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        nextBtn.Bind(Button.CommandProperty, new Binding("NextPageCommand"));
+        nextBtn.Bind(Button.IsEnabledProperty, new Binding("HasNextPage"));
+        paginationStack.Children.Add(nextBtn);
+
+        Grid.SetRow(paginationStack, 2);
+        grid.Children.Add(paginationStack);
 
         return new Border
         {
@@ -578,5 +683,134 @@ public class IssuesView : UserControl
         {
             Console.WriteLine($"Failed to open issue: {ex.Message}");
         }
+    }
+
+    private Grid CreateIssueDialog(Color textColor, Color subtextColor, Color surfaceColor, Color accentColor, Color borderColor, Color successColor, Color errorColor, Color backgroundColor)
+    {
+        var dialogGrid = new Grid
+        {
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        // Bind visibility to IsCreatingIssue
+        dialogGrid.Bind(Grid.IsVisibleProperty, new Binding("IsCreatingIssue"));
+
+        // Semi-transparent overlay
+        var overlay = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#80000000")),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        dialogGrid.Children.Add(overlay);
+
+        // Dialog box (centered)
+        var dialogStack = new StackPanel
+        {
+            Spacing = 16,
+            Orientation = Orientation.Vertical,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            MaxWidth = 450
+        };
+
+        var titleBlock = new TextBlock
+        {
+            Text = "Create New Issue",
+            FontSize = 18,
+            FontWeight = FontWeight.Bold,
+            Foreground = new SolidColorBrush(textColor)
+        };
+        dialogStack.Children.Add(titleBlock);
+
+        var issueTitle = new TextBox
+        {
+            Watermark = "Issue title...",
+            Padding = new Thickness(12, 10),
+            FontSize = 13,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(textColor),
+            MinHeight = 40
+        };
+        issueTitle.Bind(TextBox.TextProperty, new Binding("NewIssueTitle") { Mode = BindingMode.TwoWay });
+        dialogStack.Children.Add(issueTitle);
+
+        var descLabel = new TextBlock
+        {
+            Text = "Description (optional):",
+            FontSize = 11,
+            Foreground = new SolidColorBrush(subtextColor)
+        };
+        dialogStack.Children.Add(descLabel);
+
+        var issueDesc = new TextBox
+        {
+            Watermark = "Issue description...",
+            Padding = new Thickness(12, 10),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(textColor),
+            MinHeight = 100,
+            TextWrapping = TextWrapping.Wrap,
+            AcceptsReturn = true
+        };
+        issueDesc.Bind(TextBox.TextProperty, new Binding("NewIssueDescription") { Mode = BindingMode.TwoWay });
+        dialogStack.Children.Add(issueDesc);
+
+        var buttonsStack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        var createBtn = new Button
+        {
+            Content = "Create",
+            Padding = new Thickness(24, 12),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(successColor),
+            Foreground = Brushes.White
+        };
+        createBtn.Bind(Button.CommandProperty, new Binding("CreateIssueCommand"));
+        buttonsStack.Children.Add(createBtn);
+
+        var cancelBtn = new Button
+        {
+            Content = "Cancel",
+            Padding = new Thickness(24, 12),
+            FontSize = 12,
+            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(borderColor),
+            Foreground = new SolidColorBrush(textColor)
+        };
+        cancelBtn.Bind(Button.CommandProperty, new Binding("CancelCreateIssueCommand"));
+        buttonsStack.Children.Add(cancelBtn);
+
+        dialogStack.Children.Add(buttonsStack);
+
+        var dialogBorder = new Border
+        {
+            Child = dialogStack,
+            Background = new SolidColorBrush(surfaceColor),
+            BorderBrush = new SolidColorBrush(borderColor),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(24),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
+        dialogGrid.Children.Add(dialogBorder);
+
+        return dialogGrid;
     }
 }

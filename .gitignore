@@ -56,7 +56,7 @@ Thumbs.db
 secrets.json
 *.env
 gitlab_token.json
-
+avatar.png
 
 
 /tanuki_api_key.json
