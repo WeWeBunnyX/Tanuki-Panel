@@ -46,6 +46,11 @@ public interface IGitLabApiService
     Task<bool> UpdateIssueStateAsync(int projectId, int issueIid, string newState);
 
     /// <summary>
+    /// Creates a new issue in a project
+    /// </summary>
+    Task<Issue?> CreateIssueAsync(int projectId, string title, string description = "");
+
+    /// <summary>
     /// Tests the API connection and authentication
     /// </summary>
     Task<bool> TestConnectionAsync();
@@ -405,6 +410,53 @@ public class GitLabApiService : IGitLabApiService
             Console.WriteLine($"[API] ERROR - Failed to update issue: {ex.Message}");
             Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
             return false;
+        }
+    }
+
+    public async Task<Issue?> CreateIssueAsync(int projectId, string title, string description = "")
+    {
+        try
+        {
+            var url = $"{_gitlabUrl}/api/v4/projects/{projectId}/issues";
+
+            Console.WriteLine($"[API] CreateIssueAsync - Creating issue in project {projectId}");
+            Console.WriteLine($"[API] Title: {title}");
+
+            var payload = new
+            {
+                title = title,
+                description = description
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await _httpClient.PostAsync(url, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var issue = JsonSerializer.Deserialize<Issue>(json, options);
+                Console.WriteLine($"[API] Successfully created issue #{issue?.Iid}: {issue?.Title}");
+                return issue;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[API] ERROR: Failed to create issue (Status: {response.StatusCode})");
+                Console.WriteLine($"[API] Response: {errorContent}");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API] ERROR - Failed to create issue: {ex.Message}");
+            Console.WriteLine($"[API] StackTrace: {ex.StackTrace}");
+            return null;
         }
     }
 

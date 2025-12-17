@@ -28,6 +28,9 @@ public class IssuesViewModel : ViewModelBase
     private bool _isSearching = false;
     private int _currentPage = 1;
     private const int IssuesPerPage = 15;
+    private bool _isCreatingIssue = false;
+    private string _newIssueTitle = "";
+    private string _newIssueDescription = "";
 
     public ObservableCollection<Issue> Issues
     {
@@ -146,6 +149,24 @@ public class IssuesViewModel : ViewModelBase
     public bool HasNextPage => CurrentPage * IssuesPerPage < _allIssues.Count;
     public string IssuesPageInfo => $"Page {CurrentPage} • {Math.Min(IssuesPerPage, _allIssues.Count % IssuesPerPage == 0 ? IssuesPerPage : _allIssues.Count % IssuesPerPage)} of {_allIssues.Count}";
 
+    public bool IsCreatingIssue
+    {
+        get => _isCreatingIssue;
+        set => SetProperty(ref _isCreatingIssue, value);
+    }
+
+    public string NewIssueTitle
+    {
+        get => _newIssueTitle;
+        set => SetProperty(ref _newIssueTitle, value);
+    }
+
+    public string NewIssueDescription
+    {
+        get => _newIssueDescription;
+        set => SetProperty(ref _newIssueDescription, value);
+    }
+
     public IRelayCommand RefreshCommand { get; }
     public IRelayCommand<Issue> OpenIssueCommand { get; }
     public IRelayCommand SearchIssuesCommand { get; }
@@ -154,6 +175,9 @@ public class IssuesViewModel : ViewModelBase
     public IRelayCommand BackCommand { get; }
     public IRelayCommand NextPageCommand { get; }
     public IRelayCommand PreviousPageCommand { get; }
+    public IRelayCommand ShowCreateIssueDialogCommand { get; }
+    public IRelayCommand CreateIssueCommand { get; }
+    public IRelayCommand CancelCreateIssueCommand { get; }
 
     public IssuesViewModel()
     {
@@ -165,6 +189,9 @@ public class IssuesViewModel : ViewModelBase
         BackCommand = new RelayCommand(() => { });
         NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
         PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => HasPreviousPage);
+        ShowCreateIssueDialogCommand = new RelayCommand(ShowCreateIssueDialog);
+        CreateIssueCommand = new AsyncRelayCommand(CreateNewIssueAsync);
+        CancelCreateIssueCommand = new RelayCommand(CancelCreateIssue);
     }
 
     public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
@@ -368,6 +395,7 @@ public class IssuesViewModel : ViewModelBase
             }
 
             _searchedProject = project;
+            CurrentProject = project; // Set CurrentProject so "New Issue" works
             LoadingMessage = $"Fetching issues for {project.Name}...";
             Console.WriteLine($"[ViewModel] LoadRepositoryIssuesAsync - Found project: {project.Name} (ID: {project.Id}), loading issues...");
 
@@ -449,6 +477,88 @@ public class IssuesViewModel : ViewModelBase
         {
             CurrentPage--;
             ApplyFilters();
+        }
+    }
+
+    private void ShowCreateIssueDialog()
+    {
+        Console.WriteLine("[ViewModel] ShowCreateIssueDialog - Opening create issue dialog");
+        IsCreatingIssue = true;
+        NewIssueTitle = "";
+        NewIssueDescription = "";
+    }
+
+    private void CancelCreateIssue()
+    {
+        Console.WriteLine("[ViewModel] CancelCreateIssue - Closing create issue dialog");
+        IsCreatingIssue = false;
+        NewIssueTitle = "";
+        NewIssueDescription = "";
+    }
+
+    private async Task CreateNewIssueAsync()
+    {
+        Console.WriteLine("[ViewModel] CreateNewIssueAsync - Starting create issue process");
+        Console.WriteLine($"[ViewModel] CreateNewIssueAsync - Title: '{NewIssueTitle}', Description: '{NewIssueDescription}'");
+        Console.WriteLine($"[ViewModel] CreateNewIssueAsync - CurrentProject: {CurrentProject?.Name ?? "NULL"}, GitLabService: {(_gitLabService == null ? "NULL" : "OK")}");
+        
+        if (string.IsNullOrWhiteSpace(NewIssueTitle))
+        {
+            Console.WriteLine("[ViewModel] CreateNewIssueAsync - Title is empty, aborting");
+            LoadingMessage = "Please enter an issue title";
+            return;
+        }
+
+        if (_gitLabService == null)
+        {
+            Console.WriteLine("[ViewModel] CreateNewIssueAsync - GitLabService is null, aborting");
+            LoadingMessage = "GitLab service not initialized";
+            return;
+        }
+
+        if (CurrentProject == null)
+        {
+            Console.WriteLine("[ViewModel] CreateNewIssueAsync - CurrentProject is null, aborting");
+            LoadingMessage = "No project selected. Please select a project first.";
+            return;
+        }
+
+        IsLoading = true;
+        LoadingMessage = "Creating issue...";
+        Console.WriteLine($"[ViewModel] CreateNewIssueAsync - Creating issue '{NewIssueTitle}' in project {CurrentProject.Name}");
+
+        try
+        {
+            var newIssue = await _gitLabService.CreateIssueAsync(CurrentProject.Id, NewIssueTitle, NewIssueDescription);
+            
+            if (newIssue != null)
+            {
+                Console.WriteLine($"[ViewModel] CreateNewIssueAsync - Successfully created issue #{newIssue.Iid}");
+                LoadingMessage = $"Issue created successfully: #{newIssue.Iid}";
+                
+                // Clear form and close dialog
+                IsCreatingIssue = false;
+                NewIssueTitle = "";
+                NewIssueDescription = "";
+                
+                // Reload issues
+                CurrentPage = 1;
+                await LoadIssuesAsync();
+            }
+            else
+            {
+                LoadingMessage = "Failed to create issue";
+                Console.WriteLine($"[ViewModel] CreateNewIssueAsync - Failed to create issue");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ViewModel] CreateNewIssueAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
+            LoadingMessage = $"Error creating issue: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 }
