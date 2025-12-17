@@ -1,8 +1,11 @@
-﻿using Avalonia;
+﻿using System;
+using System.IO;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 
 namespace TanukiPanel.Views;
 
@@ -78,42 +81,92 @@ public class ApiKeyGuideView : UserControl
 
         // Create snapshot items
         var snapshotItems = new Border[3];
+        
+        // Find the Assets/Guide directory
+        string guidePath = null;
+        var basePaths = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "Assets", "Guide"),
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "Assets", "Guide"),
+            Path.Combine(Directory.GetCurrentDirectory(), "Assets", "Guide"),
+            @"C:\Users\hp\RiderProjects\Tanuki-Panel\Assets\Guide"
+        };
+        
+        foreach (var path in basePaths)
+        {
+            if (Directory.Exists(path))
+            {
+                guidePath = path;
+                break;
+            }
+        }
+        
         for (int i = 0; i < 3; i++)
         {
-            var snapshotContent = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Spacing = 12,
-                Width = 600,
-                Height = 400
-            };
-
-            snapshotContent.Children.Add(new TextBlock
-            {
-                Text = $"Snapshot {i + 1}",
-                FontSize = 18,
-                FontWeight = FontWeight.Bold,
-                Foreground = new SolidColorBrush(blueColor),
-                HorizontalAlignment = HorizontalAlignment.Center
-            });
-
-            snapshotContent.Children.Add(new TextBlock
-            {
-                Text = "Add your image here",
-                FontSize = 14,
-                Foreground = new SolidColorBrush(Color.Parse("#77767B")),
-                HorizontalAlignment = HorizontalAlignment.Center
-            });
-
+            var imagePath = guidePath != null ? Path.Combine(guidePath, $"{i + 1}.png") : null;
+            
             var snapshotItem = new Border
             {
                 Width = 600,
                 Height = 400,
                 Background = new SolidColorBrush(Color.Parse("#FFFFFF")),
-                Child = snapshotContent
+                BorderBrush = new SolidColorBrush(borderColor),
+                BorderThickness = new Thickness(1)
             };
+
+            // Try to load the image
+            bool imageLoaded = false;
+            if (imagePath != null && File.Exists(imagePath))
+            {
+                try
+                {
+                    var image = new Image
+                    {
+                        Width = 600,
+                        Height = 400,
+                        Stretch = Stretch.UniformToFill,
+                        StretchDirection = StretchDirection.Both,
+                        Source = new Bitmap(imagePath)
+                    };
+                    snapshotItem.Child = image;
+                    imageLoaded = true;
+                }
+                catch (Exception ex)
+                {
+                    // Image loading failed, will show fallback
+                }
+            }
+
+            // If image failed to load, show placeholder
+            if (!imageLoaded)
+            {
+                var snapshotContent = new StackPanel
+                {
+                    Orientation = Orientation.Vertical,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Spacing = 12
+                };
+
+                snapshotContent.Children.Add(new TextBlock
+                {
+                    Text = $"Snapshot {i + 1}",
+                    FontSize = 18,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(blueColor),
+                    HorizontalAlignment = HorizontalAlignment.Center
+                });
+
+                snapshotContent.Children.Add(new TextBlock
+                {
+                    Text = imagePath != null ? $"Image not found" : "Assets path not found",
+                    FontSize = 14,
+                    Foreground = new SolidColorBrush(Color.Parse("#77767B")),
+                    HorizontalAlignment = HorizontalAlignment.Center
+                });
+
+                snapshotItem.Child = snapshotContent;
+            }
 
             snapshotItems[i] = snapshotItem;
             carouselPanel.Children.Add(snapshotItem);
