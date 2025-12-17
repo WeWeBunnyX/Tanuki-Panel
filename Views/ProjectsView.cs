@@ -138,20 +138,21 @@ public class ProjectsView : UserControl
 
     private Border CreateMyProjectsPanel(Color textColor, Color subtextColor, Color surfaceColor, Color accentColor, Color borderColor)
     {
-        var grid = new Grid
+        var mainGrid = new Grid
         {
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Controls
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // List (takes remaining space)
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Pagination
 
-        // Controls section
+        // Controls section (Row 0)
         var controls = new StackPanel
         {
             Orientation = Orientation.Vertical,
             Spacing = 12,
-            Margin = new Thickness(16, 16, 16, 0)
+            Margin = new Thickness(16, 16, 16, 12)
         };
 
         var searchBox = new TextBox
@@ -221,32 +222,72 @@ public class ProjectsView : UserControl
 
         controls.Children.Add(filterRow);
         Grid.SetRow(controls, 0);
-        grid.Children.Add(controls);
+        mainGrid.Children.Add(controls);
 
-        // Scrollable list
+        // Projects list (Row 1 - fills remaining space) - NO ScrollViewer, just ListBox
         var listBox = new ListBox
         {
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0)
-        };
-        listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Projects"));
-        listBox.ItemTemplate = CreateProjectTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor);
-        
-        var scrollViewer = new ScrollViewer
-        {
-            Content = listBox,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            Margin = new Thickness(16, 12, 16, 16),
+            Padding = new Thickness(16, 12, 16, 12),
+            BorderThickness = new Thickness(0),
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        Grid.SetRow(scrollViewer, 1);
-        grid.Children.Add(scrollViewer);
+        listBox.Bind(ListBox.ItemsSourceProperty, new Binding("Projects"));
+        listBox.ItemTemplate = CreateProjectTemplate(textColor, subtextColor, surfaceColor, accentColor, borderColor);
+        Grid.SetRow(listBox, 1);
+        mainGrid.Children.Add(listBox);
+
+        // Pagination controls
+        var paginationStack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Margin = new Thickness(16, 12, 16, 12),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var prevBtn = new Button
+        {
+            Content = "← Previous",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        prevBtn.Bind(Button.CommandProperty, new Binding("PreviousMyPageCommand"));
+        prevBtn.Bind(Button.IsEnabledProperty, new Binding("HasPreviousMyPage"));
+        paginationStack.Children.Add(prevBtn);
+
+        var pageInfoBlock = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = new SolidColorBrush(subtextColor),
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 200
+        };
+        pageInfoBlock.Bind(TextBlock.TextProperty, new Binding("MyProjectsPageInfo"));
+        paginationStack.Children.Add(pageInfoBlock);
+
+        var nextBtn = new Button
+        {
+            Content = "Next →",
+            Padding = new Thickness(12, 8),
+            FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(accentColor),
+            Foreground = Brushes.White
+        };
+        nextBtn.Bind(Button.CommandProperty, new Binding("NextMyPageCommand"));
+        nextBtn.Bind(Button.IsEnabledProperty, new Binding("HasNextMyPage"));
+        paginationStack.Children.Add(nextBtn);
+
+        Grid.SetRow(paginationStack, 2);
+        mainGrid.Children.Add(paginationStack);
 
         return new Border
         {
-            Child = grid,
+            Child = mainGrid,
             Background = new SolidColorBrush(surfaceColor),
             BorderThickness = new Thickness(1),
             BorderBrush = new SolidColorBrush(borderColor),
