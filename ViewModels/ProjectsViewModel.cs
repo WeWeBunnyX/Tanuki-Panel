@@ -21,6 +21,7 @@ public class ProjectsViewModel : ViewModelBase
     private string _sortBy = "LastActivity"; // LastActivity, Name, Stars
     private IGitLabApiService? _gitLabService;
     private INavigationService? _navigationService;
+    private IToastService? _toastService;
     private string _viewMode = "MyProjects"; // "MyProjects" or "SearchProjects"
     private string _searchQuery = "";
     private bool _isSearching = false;
@@ -192,10 +193,11 @@ public class ProjectsViewModel : ViewModelBase
         PreviousMyPageCommand = new AsyncRelayCommand(PreviousMyPageAsync, () => HasPreviousMyPage);
     }
 
-    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
+    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null, IToastService? toastService = null)
     {
         _gitLabService = gitLabService;
         _navigationService = navigationService;
+        _toastService = toastService;
         _ = LoadProjectsAsync();
     }
 
@@ -516,7 +518,7 @@ public class ProjectsViewModel : ViewModelBase
         try
         {
             var issuesViewModel = new IssuesViewModel();
-            issuesViewModel.Initialize(_gitLabService, _navigationService);
+            issuesViewModel.Initialize(_gitLabService, _navigationService, _toastService);
             issuesViewModel.SetProject(project);
             
             _navigationService.Navigate(issuesViewModel);

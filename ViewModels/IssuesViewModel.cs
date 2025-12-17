@@ -20,6 +20,7 @@ public class IssuesViewModel : ViewModelBase
     private string _sortBy = "UpdatedAt"; // UpdatedAt, CreatedAt, Title
     private IGitLabApiService? _gitLabService;
     private INavigationService? _navigationService;
+    private IToastService? _toastService;
     private Project? _currentProject;
     private Project? _searchedProject;
     private string _viewMode = "ProjectIssues"; // "ProjectIssues", "SearchIssues", or "SearchRepository"
@@ -194,11 +195,12 @@ public class IssuesViewModel : ViewModelBase
         CancelCreateIssueCommand = new RelayCommand(CancelCreateIssue);
     }
 
-    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null)
+    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null, IToastService? toastService = null)
     {
         _gitLabService = gitLabService;
         _navigationService = navigationService;
-        // Store navigation service if needed for back button
+        _toastService = toastService;
+        // Store services if needed
     }
 
     public void SetProject(Project project)
@@ -439,6 +441,7 @@ public class IssuesViewModel : ViewModelBase
             {
                 LoadingMessage = $"Issue {newState}d successfully";
                 Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - Successfully toggled issue, reloading...");
+                _toastService?.ShowToast($"✅ Issue #{issue.Iid} {newState}d", ToastType.Success);
                 // Reload issues to update state
                 if (ViewMode == "ProjectIssues" && CurrentProject != null)
                     _ = LoadIssuesAsync();
@@ -449,12 +452,14 @@ public class IssuesViewModel : ViewModelBase
             {
                 Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - Failed to toggle issue state");
                 LoadingMessage = "Failed to update issue state";
+                _toastService?.ShowToast($"❌ Failed to {newState} issue #{issue.Iid}", ToastType.Error);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[ViewModel] ToggleIssueStateAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
             LoadingMessage = $"Error: {ex.Message}";
+            _toastService?.ShowToast($"❌ Error updating issue: {ex.Message}", ToastType.Error);
         }
         finally
         {
@@ -535,6 +540,7 @@ public class IssuesViewModel : ViewModelBase
             {
                 Console.WriteLine($"[ViewModel] CreateNewIssueAsync - Successfully created issue #{newIssue.Iid}");
                 LoadingMessage = $"Issue created successfully: #{newIssue.Iid}";
+                _toastService?.ShowToast($"✅ Issue #{newIssue.Iid} created: {newIssue.Title}", ToastType.Success);
                 
                 // Clear form and close dialog
                 IsCreatingIssue = false;
@@ -549,12 +555,14 @@ public class IssuesViewModel : ViewModelBase
             {
                 LoadingMessage = "Failed to create issue";
                 Console.WriteLine($"[ViewModel] CreateNewIssueAsync - Failed to create issue");
+                _toastService?.ShowToast("❌ Failed to create issue", ToastType.Error);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[ViewModel] CreateNewIssueAsync - ERROR: {ex.Message}\nStackTrace: {ex.StackTrace}");
             LoadingMessage = $"Error creating issue: {ex.Message}";
+            _toastService?.ShowToast($"❌ Error creating issue: {ex.Message}", ToastType.Error);
         }
         finally
         {

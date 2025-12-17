@@ -10,6 +10,7 @@ public class SideBarContentViewModel : ViewModelBase
     private IGitLabApiService? _gitLabService;
     private INavigationService? _navigationService;
     private IFilePickerService? _filePickerService;
+    private IToastService? _toastService;
 
     public string Title
     {
@@ -29,13 +30,14 @@ public class SideBarContentViewModel : ViewModelBase
         SelectCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<string>(OnSelect);
     }
 
-    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null, IFilePickerService? filePickerService = null)
+    public void Initialize(IGitLabApiService gitLabService, INavigationService? navigationService = null, IFilePickerService? filePickerService = null, IToastService? toastService = null)
     {
         _gitLabService = gitLabService;
         _navigationService = navigationService;
         _filePickerService = filePickerService;
+        _toastService = toastService;
         var projectsVM = new ProjectsViewModel();
-        projectsVM.Initialize(_gitLabService, _navigationService);
+        projectsVM.Initialize(_gitLabService, _navigationService, _toastService);
         CurrentViewModel = projectsVM;
         Title = "📊 Projects Dashboard";
     }
@@ -46,7 +48,7 @@ public class SideBarContentViewModel : ViewModelBase
         {
             case "Projects": 
                 var projectsVM = new ProjectsViewModel();
-                projectsVM.Initialize(_gitLabService!, _navigationService);
+                projectsVM.Initialize(_gitLabService!, _navigationService, _toastService);
                 CurrentViewModel = projectsVM;
                 Title = "📊 Projects Dashboard";
                 break;
@@ -64,7 +66,7 @@ public class SideBarContentViewModel : ViewModelBase
                 break;
             case "Issues": 
                 var issuesVM = new IssuesViewModel();
-                issuesVM.Initialize(_gitLabService!, _navigationService);
+                issuesVM.Initialize(_gitLabService!, _navigationService, _toastService);
                 CurrentViewModel = issuesVM;
                 Title = "📋 Issues";
                 break;
@@ -80,7 +82,7 @@ public class SideBarContentViewModel : ViewModelBase
                 break;
             default: 
                 var defaultProjects = new ProjectsViewModel();
-                defaultProjects.Initialize(_gitLabService!, _navigationService);
+                defaultProjects.Initialize(_gitLabService!, _navigationService, _toastService);
                 CurrentViewModel = defaultProjects;
                 Title = "📊 Projects Dashboard";
                 break;

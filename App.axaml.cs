@@ -63,8 +63,13 @@ public partial class App : Application
         services.AddSingleton<IApiKeyPersistence, ApiKeyPersistence>();
         services.AddSingleton<IToastService, ToastService>();
         
-        // Register MainWindowViewModel first
-        services.AddSingleton<MainWindowViewModel>();
+        // Register MainWindowViewModel with toast service
+        services.AddSingleton<MainWindowViewModel>(sp => 
+        {
+            var persistence = sp.GetRequiredService<IApiKeyPersistence>();
+            var toastService = sp.GetRequiredService<IToastService>();
+            return new MainWindowViewModel(persistence, toastService);
+        });
         
         // Register INavigationService as a factory that gets MainWindowViewModel after it's created
         services.AddSingleton<INavigationService>(sp => 

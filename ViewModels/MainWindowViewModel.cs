@@ -29,17 +29,19 @@ public partial class MainWindowViewModel : ViewModelBase
 	}
 
 	private readonly IApiKeyPersistence _persistence;
+	private readonly IToastService? _toastService;
 
-	public MainWindowViewModel(IApiKeyPersistence persistence)
+	public MainWindowViewModel(IApiKeyPersistence persistence, IToastService? toastService = null)
 	{
 		_persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
+		_toastService = toastService;
 		// Don't initialize CurrentViewModel here; it will be set via NavigationService later
 	}
 
 	// Called by NavigationService after DI is fully set up
 	public void InitializeWithNavigation(INavigationService navigationService)
 	{
-		var welcomeViewModel = new WelcomeViewModel(navigationService, _persistence);
+		var welcomeViewModel = new WelcomeViewModel(navigationService, _persistence, _toastService);
 		CurrentViewModel = welcomeViewModel;
 	}
 

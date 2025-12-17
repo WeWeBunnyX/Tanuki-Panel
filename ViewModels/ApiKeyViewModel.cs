@@ -17,11 +17,13 @@ public class ApiKeyViewModel : ViewModelBase
 
     private readonly IApiKeyPersistence _persistence;
     private readonly INavigationService _navigationService;
+    private readonly IToastService? _toastService;
 
-    public ApiKeyViewModel(IApiKeyPersistence persistence, INavigationService navigationService)
+    public ApiKeyViewModel(IApiKeyPersistence persistence, INavigationService navigationService, IToastService? toastService = null)
     {
         _persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        _toastService = toastService;
         SaveCommand = new RelayCommand(OnSave);
     }
 
@@ -51,7 +53,7 @@ public class ApiKeyViewModel : ViewModelBase
             }
             
             var sidebarVM = new SideBarContentViewModel();
-            sidebarVM.Initialize(freshGitLabService, _navigationService);
+            sidebarVM.Initialize(freshGitLabService, _navigationService, null, _toastService);
             _navigationService.Navigate(sidebarVM);
         }
     }
