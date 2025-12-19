@@ -48,7 +48,7 @@ A powerful, cross-platform desktop application for GitLab operations. Manage pro
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/TanukiPanel.git
+   git clone https://github.com/WeWeBunnyX/TanukiPanel.git
    cd TanukiPanel
    ```
 
