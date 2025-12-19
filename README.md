@@ -48,7 +48,7 @@ A powerful, cross-platform desktop application for GitLab operations. Manage pro
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/TanukiPanel.git
+   git clone https://github.com/WeWeBunnyX/Tanuki-Panel.git
    cd TanukiPanel
    ```
 
@@ -193,7 +193,6 @@ dotnet test
 
 The project uses `TanukiPanel.csproj` configured for:
 - Target Framework: `.NET 9.0`
-- Output Type: `WinExe` (executable)
 - Nullable reference types enabled
 - Platform-specific runtime identifiers
 
@@ -254,8 +253,7 @@ This project is licensed under the GNU General Public License v2.0 (GPLv2) - see
 
 Having issues? 
 
-- Check the [GitHub Issues](https://github.com/yourusername/TanukiPanel/issues)
-- Review the [Project Documentation](PROJECT_DOCUMENTATION.md)
+- Check the [GitHub Issues](https://github.com/WeWeBunnyX/Tanuki-Panel/issues)
 - Create a new issue with details about your problem
 
 ---
