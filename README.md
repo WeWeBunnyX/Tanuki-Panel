@@ -32,7 +32,6 @@ A powerful, cross-platform desktop application for GitLab operations. Manage pro
 | **Architecture** | MVVM (Model-View-ViewModel) |
 | **DI Framework** | Built-in .NET Dependency Injection |
 | **API** | GitLab API v4 |
-| **Design System** | GNOME Colors |
 
 ---
 
